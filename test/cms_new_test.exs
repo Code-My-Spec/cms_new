@@ -1,0 +1,166 @@
+Code.require_file("mix_helper.exs", __DIR__)
+
+defmodule Mix.Tasks.Cms.NewTest do
+  @moduledoc """
+  Asserts that a generated project satisfies every
+  `CodeMySpec.AgentTasks.ProjectSetup` step without an agent touching it.
+
+  The assertions below are deliberately written as the *same predicates*
+  CodeMySpec applies at sync time in `Files.FileSync` — the regexes and
+  string checks are copied from `validate_mix_exs/1`, `validate_credo_exs/1`,
+  and friends. That is the point of this file: if either side changes, this
+  test fails, instead of the drift only showing up as a project that quietly
+  needs a manual setup pass.
+
+  Four steps are NOT covered here (AgentsMd, ClaudeMd, Rules, CredoChecks).
+  Those are installed by the harness at `cms init` from content it owns, so
+  they are tested on the CodeMySpec side in
+  `test/code_my_spec/mcp_servers/bootstrap/installers_test.exs`.
+  """
+  use ExUnit.Case, async: false
+  import MixHelper
+
+  @app_name "cms_blog"
+
+  setup do
+    send(self(), {:mix_shell_input, :yes?, false})
+    :ok
+  end
+
+  # Templates explain their design choices in comments, which means a comment
+  # can legitimately name the very thing the code must not do. Assertions
+  # about behaviour should look at code.
+  defp strip_comments(source) do
+    source
+    |> String.split("\n")
+    |> Enum.reject(&String.starts_with?(String.trim(&1), "#"))
+    |> Enum.join("\n")
+  end
+
+  test "generated project satisfies the ProjectSetup steps" do
+    in_tmp("cms new", fn ->
+      Mix.Tasks.Cms.New.run([@app_name])
+
+      # --- ApplicationInWeb ------------------------------------------------
+      refute File.exists?("cms_blog/lib/cms_blog/application.ex"),
+             "Application must not remain in the core namespace"
+
+      assert_file("cms_blog/lib/cms_blog_web/application.ex", fn file ->
+        assert file =~ "defmodule CmsBlogWeb.Application do"
+        assert file =~ "name: CmsBlogWeb.Supervisor"
+      end)
+
+      assert_file("cms_blog/mix.exs", fn file ->
+        # validate_codemyspec_deps/1
+        for dep <- ~w(credo client_utils sobelow sexy_spex boundary code_my_spec_generators) do
+          assert Regex.match?(~r/\{:#{dep}[,\s]/, file), "missing dep :#{dep} in mix.exs"
+        end
+
+        # validate_compilers/1
+        assert Regex.match?(~r/compilers.*:boundary/s, file)
+        assert Regex.match?(~r/compilers.*:spex/s, file)
+
+        # validate_spex_config/1
+        assert Regex.match?(~r/spex:\s*:test/, file)
+
+        # extract_app_name_result/1
+        assert Regex.match?(~r/app:\s*:(\w+)/, file)
+
+        # mod: must follow the Application module into the web namespace
+        assert file =~ "mod: {CmsBlogWeb.Application, []}"
+
+        # :diagnostics comes from :client_utils and :boundary from :boundary;
+        # neither may be dev-only or the compiler is absent in test/prod
+        refute Regex.match?(~r/\{:boundary,[^}]*only:/, file)
+        refute Regex.match?(~r/\{:client_utils,[^}]*only:/, file)
+      end)
+
+      # --- TestSupportNamespace --------------------------------------------
+      assert_file("cms_blog/test/support/conn_case.ex", fn file ->
+        assert file =~ "defmodule CmsBlogTest.ConnCase do"
+      end)
+
+      assert_file("cms_blog/test/support/data_case.ex", fn file ->
+        assert file =~ "defmodule CmsBlogTest.DataCase do"
+      end)
+
+      # Shims so stock `mix phx.gen.*` output still compiles
+      assert_file("cms_blog/test/support/conn_case_compat.ex", fn file ->
+        assert file =~ "defmodule CmsBlogWeb.ConnCase do"
+        assert file =~ "use CmsBlogTest.ConnCase, unquote(opts)"
+      end)
+
+      assert_file("cms_blog/test/support/data_case_compat.ex", fn file ->
+        assert file =~ "defmodule CmsBlog.DataCase do"
+        assert file =~ "use CmsBlogTest.DataCase, unquote(opts)"
+      end)
+
+      # --- TestBoundaries ---------------------------------------------------
+      assert_file("cms_blog/test/support/cms_blog_spex.ex", fn file ->
+        assert file =~ "defmodule CmsBlogSpex do"
+        # Must NOT depend on the test-support boundary; spex own their
+        # sandbox. Assert on the deps list itself, not the whole file.
+        assert file =~ "deps: [CmsBlog, CmsBlogWeb]"
+      end)
+
+      assert_file("cms_blog/test/support/cms_blog_test_boundary.ex", fn file ->
+        assert file =~ "defmodule CmsBlogTest do"
+        assert file =~ "use Boundary"
+      end)
+
+      # Root modules must be claimed, or every module warns "not included in
+      # any boundary"
+      assert_file("cms_blog/lib/cms_blog.ex", fn file ->
+        assert file =~ "use Boundary"
+      end)
+
+      assert_file("cms_blog/lib/cms_blog_web.ex", fn file ->
+        assert file =~ "use Boundary"
+        assert file =~ "deps: [CmsBlog]"
+      end)
+
+      # --- SpexCase ---------------------------------------------------------
+      assert_file("cms_blog/test/support/cms_blog_spex_case.ex", fn file ->
+        assert file =~ "defmodule CmsBlogSpex.Case do"
+        assert file =~ "use SexySpex"
+        # Owns its sandbox rather than reaching into CmsBlogTest.DataCase.
+        # Assert against CODE only: the template carries a comment explaining
+        # why it doesn't delegate, and that comment necessarily names the
+        # call it is declining to make.
+        assert file =~ "Sandbox.start_owner!(CmsBlog.Repo"
+        refute strip_comments(file) =~ "CmsBlogTest.DataCase"
+      end)
+
+      # --- CredoChecks ------------------------------------------------------
+      # validate_credo_exs/1 wants both requires plus the eval_file
+      assert_file("cms_blog/.credo.exs", fn file ->
+        assert file =~ "credo_checks/framework"
+        assert file =~ "credo_checks/local"
+        assert file =~ "credo_checks/framework/checks.exs"
+      end)
+
+      # --- ProjectStructure -------------------------------------------------
+      for dir <- ~w(rules spec/cms_blog spec/cms_blog_web) do
+        assert File.dir?("cms_blog/.code_my_spec/#{dir}"),
+               "missing .code_my_spec/#{dir}"
+
+        assert File.exists?("cms_blog/.code_my_spec/#{dir}/.gitkeep"),
+               ".code_my_spec/#{dir} needs a .gitkeep — git does not track empty dirs, " <>
+                 "so the structure would not survive a clone"
+      end
+    end)
+  end
+
+  test "harness content the generator must NOT emit" do
+    in_tmp("cms new no harness content", fn ->
+      Mix.Tasks.Cms.New.run([@app_name])
+
+      # These are installed by `cms init` from content the harness owns.
+      # Emitting them here would create a second source of truth that
+      # silently goes stale.
+      refute File.exists?("cms_blog/.code_my_spec/AGENTS.md")
+      refute File.exists?("cms_blog/CLAUDE.md")
+      assert File.ls!("cms_blog/.code_my_spec/rules") == [".gitkeep"]
+    end)
+  end
+end

@@ -14,6 +14,7 @@ defmodule Mix.Tasks.Phx.NewTest do
     :ok
   end
 
+  @tag :phoenix_repo_only
   test "assets are in sync with priv" do
     for file <- ~w(favicon.ico phoenix.png) do
       assert File.read!("../priv/static/#{file}") ==
@@ -71,11 +72,13 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ ~r/^\s+ip: {0, 0, 0, 0, 0, 0, 0, 0}$/m
       end)
 
-      assert_file("phx_blog/lib/phx_blog/application.ex", ~r/defmodule PhxBlog.Application do/)
+      # CodeMySpec: Application moved to the web namespace (supervises Repo AND Endpoint)
+      assert_file("phx_blog/lib/phx_blog_web/application.ex", ~r/defmodule PhxBlogWeb.Application do/)
       assert_file("phx_blog/lib/phx_blog.ex", ~r/defmodule PhxBlog do/)
 
       assert_file("phx_blog/mix.exs", fn file ->
-        assert file =~ "mod: {PhxBlog.Application, []}"
+        # CodeMySpec: Application lives in the web namespace
+        assert file =~ "mod: {PhxBlogWeb.Application, []}"
         assert file =~ "{:jason,"
         assert file =~ "{:phoenix_live_dashboard,"
       end)
@@ -214,7 +217,7 @@ defmodule Mix.Tasks.Phx.NewTest do
       )
 
       assert_file("phx_blog/priv/repo/seeds.exs", ~r"PhxBlog.Repo.insert!")
-      assert_file("phx_blog/test/support/data_case.ex", ~r"defmodule PhxBlog.DataCase")
+      assert_file("phx_blog/test/support/data_case.ex", ~r"defmodule PhxBlogTest.DataCase")
       assert_file("phx_blog/priv/repo/migrations/.formatter.exs", ~r"import_deps: \[:ecto_sql\]")
 
       # LiveView
@@ -698,7 +701,7 @@ defmodule Mix.Tasks.Phx.NewTest do
       assert_file("custom_path/config/runtime.exs", [~r/database: database_path/])
       assert_file("custom_path/lib/custom_path/repo.ex", "Ecto.Adapters.SQLite3")
 
-      assert_file("custom_path/lib/custom_path/application.ex", fn file ->
+      assert_file("custom_path/lib/custom_path_web/application.ex", fn file ->
         assert file =~ "{Ecto.Migrator"
         assert file =~ "repos: Application.fetch_env!(:custom_path, :ecto_repos)"
         assert file =~ "skip: skip_migrations?()"

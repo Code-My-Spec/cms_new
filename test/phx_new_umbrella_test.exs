@@ -2,6 +2,9 @@ Code.require_file("mix_helper.exs", __DIR__)
 
 defmodule Mix.Tasks.Phx.New.UmbrellaTest do
   use ExUnit.Case, async: false
+
+  # cms.new rejects --umbrella; see test/test_helper.exs
+  @moduletag :umbrella
   import MixHelper
 
   @app "phx_umb"

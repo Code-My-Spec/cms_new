@@ -9,31 +9,46 @@ defmodule <%= @app_module %>.MixProject do
       config_path: "../../config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",<% end %>
-      elixir: "~> 1.15",
+      elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps(),<%= if @html do %>
-      compilers: [:phoenix_live_view] ++ Mix.compilers(),<% end %>
+      deps: deps(),
+      compilers: compilers(Mix.env()),
+      spex: [pattern: "test/spex/**/*_spex.exs", boundary: <%= @spex_namespace %>],
       listeners: [Phoenix.CodeReloader]
     ]
   end
 
   # Configuration for the OTP application.
   #
+  # The Application module lives in the WEB namespace: it supervises both
+  # the Repo and the Endpoint, so keeping it under <%= @app_module %> would
+  # make the core namespace depend on the web one and violate the boundary.
+  #
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {<%= @app_module %>.Application, []},
+      mod: {<%= @web_namespace %>.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [precommit: :test, spex: :test]
     ]
   end
+
+  # The :spex compiler only runs in :test — it compiles the BDD spec files
+  # under test/spex, which do not exist in any other environment.
+  # The LiveView compiler is listed only when this project has the HTML
+  # stack; under --no-html that dep is absent and it cannot resolve.
+  defp compilers(:test),
+    do: [:boundary, :diagnostics, <%= if @html do %>:phoenix_live_view, <% end %>:erlang, :elixir, :spex, :app]
+
+  defp compilers(_),
+    do: [:boundary, :diagnostics, <%= if @html do %>:phoenix_live_view, <% end %>:erlang, :elixir, :app]
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -69,7 +84,17 @@ defmodule <%= @app_module %>.MixProject do
       {:gettext, "~> 1.0"},<% end %>
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {<%= inspect @web_adapter_app %>, "<%= @web_adapter_vsn %>"}
+      {<%= inspect @web_adapter_app %>, "<%= @web_adapter_vsn %>"},
+
+      # CodeMySpec harness. `:boundary` and `:client_utils` supply the
+      # `:boundary` and `:diagnostics` compilers declared in compilers/1,
+      # so they are runtime-visible in every environment, not dev-only.
+      {:boundary, "~> 0.10.4"},
+      {:client_utils, "~> 0.1.19"},
+      {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.14.1", only: [:dev, :test], runtime: false},
+      {:sexy_spex, "~> 0.2", only: [:dev, :test]},
+      {:code_my_spec_generators, "~> 0.1.0", only: :dev}
     ]
   end
 

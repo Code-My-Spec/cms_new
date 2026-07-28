@@ -1,0 +1,16 @@
+defmodule <%= @web_namespace %>.ConnCase do
+  @moduledoc """
+  Compatibility shim: Phoenix generators emit `use <%= @web_namespace %>.ConnCase`.
+  The real case module is `<%= @test_namespace %>.ConnCase` — forward to it.
+
+  `mix phx.gen.auth` / `phx.gen.live` / `phx.gen.html` hardcode the default
+  case-module names in every test they emit; without this shim their output
+  does not compile. Newly generated tests compile as-emitted — normalize them
+  to the `<%= @test_namespace %>.*` names whenever you next touch them.
+  """
+  defmacro __using__(opts) do
+    quote do
+      use <%= @test_namespace %>.ConnCase, unquote(opts)
+    end
+  end
+end

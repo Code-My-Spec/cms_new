@@ -11,7 +11,9 @@ defmodule Phx.New.Single do
      "phx_single/config/runtime.exs.eex": "config/runtime.exs",
      "phx_single/config/test.exs.eex": "config/test.exs"},
     {:eex, :web,
-     "phx_single/lib/app_name/application.ex.eex": "lib/:app/application.ex",
+     # CodeMySpec: the Application module supervises both the Repo and the
+     # Endpoint, so it belongs to the web namespace, not the app one.
+     "phx_single/lib/app_name/application.ex.eex": "lib/:lib_web_name/application.ex",
      "phx_single/lib/app_name.ex.eex": "lib/:app.ex",
      "phx_web/controllers/error_json.ex.eex": "lib/:lib_web_name/controllers/error_json.ex",
      "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
@@ -105,6 +107,27 @@ defmodule Phx.New.Single do
     {:eex, :app, "phx_mailer/lib/app_name/mailer.ex.eex": "lib/:app/mailer.ex"}
   ])
 
+  # CodeMySpec harness files whose target path is a fixed string. The
+  # app-name-prefixed ones (test/support/<app>_spex.ex and friends) cannot
+  # live here: Project.join_path/3 expands `:key` against the Project struct,
+  # and `:app_spex` would be read as one key and blow up. Those are rendered
+  # by gen_cms/1 below.
+  template(:cms, [
+    {:eex, :project, "cms/credo.exs.eex": ".credo.exs"},
+    {:eex, :project, "cms/conn_case_compat.ex.eex": "test/support/conn_case_compat.ex"},
+    {:eex, :project, "cms/data_case_compat.ex.eex": "test/support/data_case_compat.ex"}
+  ])
+
+  # Declared only so __before_compile__ emits render/3 clauses for these
+  # sources. gen_cms/1 renders them and writes to app-name-prefixed paths;
+  # the targets below are never used and are placeholders.
+  template(:cms_extra, [
+    {:eex, :project,
+     "cms/spex_boundary.ex.eex": "test/support/spex_boundary.ex",
+     "cms/test_boundary.ex.eex": "test/support/test_boundary.ex",
+     "cms/spex_case.ex.eex": "test/support/spex_case.ex"}
+  ])
+
   def prepare_project(%Project{app: app, base_path: base_path} = project) when not is_nil(app) do
     if in_umbrella?(base_path) do
       %{project | in_umbrella?: true, project_path: Path.dirname(Path.dirname(base_path))}
@@ -149,6 +172,41 @@ defmodule Phx.New.Single do
     if Project.gettext?(project), do: gen_gettext(project)
 
     gen_assets(project)
+    gen_cms(project)
+    project
+  end
+
+  @doc """
+  Emits the CodeMySpec harness files.
+
+  Between this and the template edits, a generated project satisfies every
+  `CodeMySpec.AgentTasks.ProjectSetup` check on first sync — no agent pass.
+
+  `.code_my_spec/AGENTS.md`, `CLAUDE.md`, and `.code_my_spec/rules/` are
+  deliberately absent: the harness owns that content and installs it at
+  `cms init`, so it has exactly one source of truth.
+  """
+  def gen_cms(%Project{} = project) do
+    copy_from(project, __MODULE__, :cms)
+
+    app = project.binding[:app_name]
+
+    for {template, target} <- [
+          {"cms/spex_boundary.ex.eex", "test/support/#{app}_spex.ex"},
+          {"cms/test_boundary.ex.eex", "test/support/#{app}_test_boundary.ex"},
+          {"cms/spex_case.ex.eex", "test/support/#{app}_spex_case.ex"}
+        ] do
+      contents = render(:cms_extra, template, project.binding)
+      Mix.Generator.create_file(Path.join(project.project_path, target), contents)
+    end
+
+    # Spec directories the harness writes into. `.gitkeep` files rather than
+    # bare mkdir: git does not track empty directories, and the structure has
+    # to survive a clone for the setup check to keep passing.
+    for dir <- [".code_my_spec/rules", ".code_my_spec/spec/#{app}", ".code_my_spec/spec/#{app}_web"] do
+      Mix.Generator.create_file(Path.join([project.project_path, dir, ".gitkeep"]), "")
+    end
+
     project
   end
 

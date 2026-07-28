@@ -1,0 +1,13 @@
+defmodule <%= @app_module %>.DataCase do
+  @moduledoc """
+  Compatibility shim: Phoenix generators emit `use <%= @app_module %>.DataCase`.
+  The real case module is `<%= @test_namespace %>.DataCase` — forward to it.
+
+  See `<%= @web_namespace %>.ConnCase` for the rationale.
+  """
+  defmacro __using__(opts) do
+    quote do
+      use <%= @test_namespace %>.DataCase, unquote(opts)
+    end
+  end
+end

@@ -291,6 +291,11 @@ defmodule Phx.New.Generator do
       web_app_name: project.web_app,
       endpoint_module: inspect(Module.concat(project.web_namespace, Endpoint)),
       web_namespace: inspect(project.web_namespace),
+      # CodeMySpec namespaces. Test support lives under <App>Test and BDD
+      # spec files under <App>Spex, each its own top-level boundary, so the
+      # boundary compiler can stop test code reaching past the web layer.
+      test_namespace: inspect(Module.concat(["#{project.root_mod}Test"])),
+      spex_namespace: inspect(Module.concat(["#{project.root_mod}Spex"])),
       phoenix_dep: phoenix_dep(phoenix_path),
       phoenix_dep_umbrella_root: phoenix_dep(phoenix_path_umbrella_root),
       phoenix_js_path: phoenix_js_path(phoenix_path),

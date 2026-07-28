@@ -17,6 +17,11 @@ defmodule <%= @web_namespace %> do
   those modules here.
   """
 
+  # The web layer. Depends on the core, never the other way round — that
+  # one-way arrow is the whole reason <%= @web_namespace %>.Application lives
+  # here rather than under <%= @app_module %>.
+  use Boundary, top_level?: true, deps: [<%= @app_module %>], exports: :all
+
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
 
   def router do

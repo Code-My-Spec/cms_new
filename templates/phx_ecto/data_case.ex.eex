@@ -1,4 +1,4 @@
-defmodule <%= @app_module %>.DataCase do
+defmodule <%= @test_namespace %>.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -10,7 +10,7 @@ defmodule <%= @app_module %>.DataCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use <%= @app_module %>.DataCase, async: true`, although
+  by setting `use <%= @test_namespace %>.DataCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -23,12 +23,12 @@ defmodule <%= @app_module %>.DataCase do
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import <%= @app_module %>.DataCase
+      import <%= @test_namespace %>.DataCase
     end
   end
 
   setup tags do
-    <%= @app_module %>.DataCase.setup_sandbox(tags)
+    <%= @test_namespace %>.DataCase.setup_sandbox(tags)
     :ok
   end
 

@@ -1,5 +1,9 @@
+# Purge any INSTALLED archive from the code path so the source tree wins
+# while developing. Both names matter: our modules are still namespaced
+# `Phx.New.*` (deliberately — it keeps the upstream rebase clean), so a
+# stock phx_new archive would clash with them just as an older cms_new would.
 for path <- :code.get_path(),
-    Regex.match?(~r/phx_new-[\w\.\-]+\/ebin$/, List.to_string(path)) do
+    Regex.match?(~r/(cms_new|phx_new)-[\w\.\-]+\/ebin$/, List.to_string(path)) do
   Code.delete_path(path)
 end
 
@@ -7,7 +11,7 @@ defmodule Phx.New.MixProject do
   use Mix.Project
 
   @version "1.8.8"
-  @scm_url "https://github.com/phoenixframework/phoenix"
+  @scm_url "https://github.com/Code-My-Spec/cms_new"
 
   # If the elixir requirement is updated, we need to update:
   #
@@ -17,11 +21,11 @@ defmodule Phx.New.MixProject do
   #   4. test/test_helper.exs at the root
   #   5. installer/lib/mix/tasks/phx.new.ex
   #
-  @elixir_requirement "~> 1.15"
+  @elixir_requirement "~> 1.20"
 
   def project do
     [
-      app: :phx_new,
+      app: :cms_new,
       start_permanent: Mix.env() == :prod,
       version: @version,
       elixir: @elixir_requirement,
@@ -40,12 +44,13 @@ defmodule Phx.New.MixProject do
       ],
       source_url: @scm_url,
       docs: docs(),
-      homepage_url: "https://www.phoenixframework.org",
+      homepage_url: "https://codemyspec.com",
       description: """
-      Phoenix framework project generator.
+      CodeMySpec project generator.
 
-      Provides a `mix phx.new` task to bootstrap a new Elixir application
-      with Phoenix dependencies.
+      Provides a `mix cms.new` task to bootstrap a new Phoenix application
+      that already satisfies every CodeMySpec harness convention — no
+      model-driven setup pass required.
       """
     ]
   end

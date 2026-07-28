@@ -1,6 +1,11 @@
-defmodule <%= @app_module %>.Application do
+defmodule <%= @web_namespace %>.Application do
   # See https://elixir.hexdocs.pm/Application.html
   # for more information on OTP Applications
+  #
+  # This module lives in the WEB namespace, not <%= @app_module %>. It
+  # supervises both the Repo and the Endpoint, so hosting it under
+  # <%= @app_module %> would make the core namespace depend on the web one
+  # and violate the boundary declared in lib/<%= @app_name %>.ex.
   @moduledoc false
 
   use Application
@@ -22,7 +27,7 @@ defmodule <%= @app_module %>.Application do
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: <%= @app_module %>.Supervisor]
+    opts = [strategy: :one_for_one, name: <%= @web_namespace %>.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
