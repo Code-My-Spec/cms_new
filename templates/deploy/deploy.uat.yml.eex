@@ -1,0 +1,51 @@
+# UAT deploy configuration.
+#
+# Its own host and its own APP_ENV — the discriminator that keeps UAT reading
+# UAT's secrets and production reading production's, from one shared image.
+#
+# Setup starts both environments on a single box and can relocate production
+# to its own later; when that happens only the host below changes.
+service: <%= @app_name %>-uat
+image: <%= @app_name %>
+
+servers:
+  web:
+    hosts:
+      - <UAT_HOST_IP>
+    options:
+      network: db_net
+
+proxy:
+  ssl: true
+  host: <UAT_HOST>
+  app_port: 4000
+  healthcheck:
+    path: /health
+
+registry:
+  server: ghcr.io
+  username: <GITHUB_USER>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  # arm64: UAT runs on a cheaper European ARM box (Hetzner cax line), while
+  # production runs x64 in the US. Both architectures are published by CI as
+  # one manifest list, so the same commit deploys to either — but this must
+  # match the host or the container starts and immediately dies.
+  arch: arm64
+  local: true
+
+env:
+  clear:
+    APP_ENV: uat
+    PHX_HOST: <UAT_HOST>
+    PORT: 4000
+  secret:
+    # UAT's own age key. Per-environment keys mean this one cannot decrypt
+    # production's secrets, so being able to deploy UAT reveals nothing about
+    # production.
+    - SOPS_AGE_KEY
+
+ssh:
+  user: root

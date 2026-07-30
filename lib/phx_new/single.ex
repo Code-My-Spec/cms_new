@@ -16,6 +16,10 @@ defmodule Phx.New.Single do
      "phx_single/lib/app_name/application.ex.eex": "lib/:lib_web_name/application.ex",
      "phx_single/lib/app_name.ex.eex": "lib/:app.ex",
      "phx_web/controllers/error_json.ex.eex": "lib/:lib_web_name/controllers/error_json.ex",
+     # Health endpoint ships regardless of --no-html: the deploy proxy gates
+     # the traffic swap on it either way.
+     "phx_web/controllers/health_controller.ex.eex":
+       "lib/:lib_web_name/controllers/health_controller.ex",
      "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
      "phx_web/router.ex.eex": "lib/:lib_web_name/router.ex",
      "phx_web/telemetry.ex.eex": "lib/:lib_web_name/telemetry.ex",
@@ -128,6 +132,27 @@ defmodule Phx.New.Single do
      "cms/spex_case.ex.eex": "test/support/spex_case.ex"}
   ])
 
+  # Deploy boilerplate. Always emitted, no flag: the setup routine fills in
+  # values and runs commands rather than generating files, so it can assume
+  # these exist. A library carries a few files it will never use; that is the
+  # accepted cost of removing a code path.
+  template(:deploy, [
+    {:eex, :project,
+     "deploy/Dockerfile.eex": "Dockerfile",
+     "deploy/build.yml.eex": ".github/workflows/build.yml",
+     "deploy/deploy.yml.eex": "config/deploy.yml",
+     "deploy/deploy.uat.yml.eex": "config/deploy.uat.yml",
+     "deploy/sops.yaml.eex": ".sops.yaml",
+     "deploy/migrate.eex": "rel/overlays/bin/migrate",
+     "deploy/deploy_script.eex": "bin/deploy"}
+  ])
+
+  # Rendered by gen_deploy/1 into one file per environment; the target below
+  # is a placeholder that is never used.
+  template(:deploy_envs, [
+    {:eex, :project, "deploy/env_placeholder.enc.env.eex": "envs/placeholder.enc.env"}
+  ])
+
   def prepare_project(%Project{app: app, base_path: base_path} = project) when not is_nil(app) do
     if in_umbrella?(base_path) do
       %{project | in_umbrella?: true, project_path: Path.dirname(Path.dirname(base_path))}
@@ -173,6 +198,7 @@ defmodule Phx.New.Single do
 
     gen_assets(project)
     gen_cms(project)
+    gen_deploy(project)
     project
   end
 
@@ -205,6 +231,42 @@ defmodule Phx.New.Single do
     # to survive a clone for the setup check to keep passing.
     for dir <- [".code_my_spec/rules", ".code_my_spec/spec/#{app}", ".code_my_spec/spec/#{app}_web"] do
       Mix.Generator.create_file(Path.join([project.project_path, dir, ".gitkeep"]), "")
+    end
+
+    project
+  end
+
+  @doc """
+  Emits the deploy boilerplate.
+
+  A generated project is deployable on its first push: the Dockerfile and CI
+  workflow build a multi-arch image, one deploy config per environment names
+  its own host and APP_ENV, and `bin/deploy` enforces migrate-before-swap.
+
+  The setup routine fills in the placeholder hosts and keys; it does not write
+  any of these files, which is what lets it assume they exist.
+  """
+  def gen_deploy(%Project{} = project) do
+    copy_from(project, __MODULE__, :deploy)
+
+    # One encrypted env file per environment. Committed as placeholders so the
+    # paths exist and `sops envs/<env>.enc.env` works immediately — the repo is
+    # safe to push from the first commit because there is no plaintext env file
+    # anywhere in it.
+    placeholder = render(:deploy_envs, "deploy/env_placeholder.enc.env.eex", project.binding)
+
+    for env <- ~w(prod uat) do
+      Mix.Generator.create_file(
+        Path.join([project.project_path, "envs", "#{env}.enc.env"]),
+        placeholder
+      )
+    end
+
+    # Executable: both are run directly, and a non-executable bin/deploy is a
+    # confusing first failure on a fresh clone.
+    for script <- ["bin/deploy", "rel/overlays/bin/migrate"] do
+      path = Path.join(project.project_path, script)
+      if File.exists?(path), do: File.chmod!(path, 0o755)
     end
 
     project

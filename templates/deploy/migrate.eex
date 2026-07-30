@@ -1,0 +1,14 @@
+#!/bin/sh
+# Release overlay: run migrations from a one-off container built on the NEW
+# image, before any traffic moves to it.
+#
+# The deploy wrapper calls this ahead of the traffic swap. Migrating after the
+# swap means every request in the gap runs new code against an old schema,
+# which is the "every request 500s right after a successful deploy" failure.
+#
+# Because the OLD code runs against the NEW schema during the swap window,
+# migrations must be additive. Two-phase anything destructive: ship code that
+# stops reading the column first, drop it in a later deploy.
+set -eu
+cd -P -- "$(dirname -- "$0")"
+exec ./<%= @app_name %> eval '<%= @app_module %>.Release.migrate'

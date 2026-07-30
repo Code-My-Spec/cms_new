@@ -49,7 +49,13 @@ if config_env() == :prod do
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
-    secret_key_base: secret_key_base
+    secret_key_base: secret_key_base,
+    # The deploy proxy terminates TLS and probes the app port directly over
+    # plain HTTP, with no X-Forwarded-Proto header. Without excluding the
+    # health path, force_ssl answers that probe with a 301, the proxy reads
+    # the redirect as an unhealthy container, and the traffic swap never
+    # completes — a deploy that fails for a reason unrelated to the app.
+    force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: ["/health", "localhost", "127.0.0.1"]]
 
   # ## SSL Support
   #

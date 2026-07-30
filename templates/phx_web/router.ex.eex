@@ -12,6 +12,19 @@ defmodule <%= @web_namespace %>.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  # Health check for the deploy proxy. Deliberately outside every pipeline:
+  # the proxy probes the app port directly over plain HTTP, with no session,
+  # no X-Forwarded-Proto header and no expectation of a database. A health
+  # route inside :browser would carry session and CSRF plugs and could fail
+  # the probe for reasons unrelated to whether the app is up.
+  #
+  # `config/runtime.exs` excludes this path from force_ssl for the same
+  # reason: otherwise the probe is redirected and the traffic swap never
+  # completes.
+  scope "/", <%= @web_namespace %> do
+    get "/health", HealthController, :show
   end<%= if @html do %>
 
   scope "/", <%= @web_namespace %> do

@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# The only supported way to deploy. Never call `kamal deploy` directly — this
+# wrapper enforces the ordering that keeps a schema change from taking the site
+# down, and refuses to proceed on a dirty tree or a missing key.
+#
+#   bin/deploy            # production
+#   bin/deploy uat        # UAT
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+cd "$REPO_ROOT"
+
+ENV_NAME="${1:-prod}"
+case "$ENV_NAME" in
+  prod) CONFIG="config/deploy.yml" ;;
+  uat)  CONFIG="config/deploy.uat.yml" ;;
+  *)    echo "unknown environment: $ENV_NAME (expected prod or uat)" >&2; exit 1 ;;
+esac
+
+# 1. Clean tree. The image is versioned by commit SHA, so deploying with
+#    uncommitted changes would ship something no commit describes.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "working tree is dirty — commit or stash first" >&2
+  git status --short >&2
+  exit 1
+fi
+
+SHA=$(git rev-parse HEAD)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# 2. Push and wait for CI to publish the image for this exact commit. The
+#    deploy pulls what CI built; it never builds locally.
+git push origin "$BRANCH"
+sleep 5
+
+RUN_ID=$(gh run list --workflow=build.yml --branch="$BRANCH" --limit=1 \
+  --json databaseId --jq '.[0].databaseId')
+
+if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+  echo "could not find a CI run for $BRANCH — is the build workflow enabled?" >&2
+  exit 1
+fi
+
+gh run watch "$RUN_ID" --exit-status --interval 10
+
+# 3. Credentials. KAMAL_REGISTRY_PASSWORD pulls the image; SOPS_AGE_KEY is
+#    handed to the container so it can decrypt its own environment at boot.
+#
+#    Both are checked for emptiness before proceeding. An empty value here
+#    does not fail loudly — it produces a container that boots without
+#    secrets, or a host env-file that survives into every later command.
+export KAMAL_REGISTRY_PASSWORD
+KAMAL_REGISTRY_PASSWORD=$(gh auth token)
+
+KEY_FILE="envs/${ENV_NAME}.age.key"
+if [ ! -f "$KEY_FILE" ]; then
+  echo "missing $KEY_FILE — the deploy carries this to the host as SOPS_AGE_KEY" >&2
+  exit 1
+fi
+
+export SOPS_AGE_KEY
+SOPS_AGE_KEY=$(cat "$KEY_FILE")
+
+for var in KAMAL_REGISTRY_PASSWORD SOPS_AGE_KEY; do
+  if [ -z "${!var:-}" ]; then
+    echo "ERROR: $var is empty; refusing to deploy" >&2
+    exit 1
+  fi
+done
+
+# 4. Migrate against the NEW image BEFORE traffic moves. The currently
+#    serving container keeps handling requests against the migrated schema
+#    until step 5 swaps it out.
+kamal app exec --version="$SHA" -c "$CONFIG" "/app/bin/migrate"
+
+# 5. Swap traffic. The proxy gates this on /health, so an unhealthy version
+#    never becomes the live one.
+kamal deploy --skip-push --version="$SHA" -c "$CONFIG" "${@:2}"
+
+echo
+echo "deployed $SHA to $ENV_NAME"
