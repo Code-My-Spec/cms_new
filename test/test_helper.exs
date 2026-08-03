@@ -1,4 +1,10 @@
-ExUnit.start(exclude: [:phoenix_repo_only, :umbrella])
+ExUnit.start(exclude: [:phoenix_repo_only, :umbrella, :boot])
+
+# :boot — generates a project, fetches its dependencies, compiles it and
+# starts it. That is minutes and a network round trip, which does not belong
+# in the suite people run while working. Run it with `mix test --include boot`
+# when the templates that decide whether a generated project actually runs
+# have changed.
 
 # Two groups of upstream tests cannot pass in this vendored fork, and are
 # excluded by default rather than left red:

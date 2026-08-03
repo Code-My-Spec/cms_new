@@ -203,4 +203,55 @@ defmodule Mix.Tasks.Cms.NewTest do
       end)
     end)
   end
+
+  @tag :boot
+  @tag timeout: 600_000
+  test "a generated project boots and serves before Sam owns any infrastructure" do
+    in_tmp("cms new boot", fn ->
+      Mix.Tasks.Cms.New.run(["cms_blog", "--no-install"])
+
+      # Story 970 criterion 7980. The claim is that Sam can work locally
+      # before he has a Hetzner account, a domain or a registry — so this
+      # generates a project, builds it and asks it for a response, with no
+      # provider credentials configured and no database created.
+      File.cd!("cms_blog", fn ->
+        {_, 0} = System.cmd("mix", ["deps.get"], stderr_to_stdout: true)
+        {out, status} = System.cmd("mix", ["compile"], stderr_to_stdout: true)
+        assert status == 0, "generated project did not compile:\n#{out}"
+
+        port = "4399"
+
+        # Killing the spawning Elixir process would not kill the OS process it
+        # started — that leaves a server holding the port after the suite
+        # exits, which is its own kind of mess. Kill by port instead.
+        spawn(fn ->
+          System.cmd("mix", ["phx.server"],
+            env: [{"PORT", port}, {"MIX_ENV", "dev"}],
+            stderr_to_stdout: true
+          )
+        end)
+
+        on_exit(fn ->
+          System.cmd("sh", ["-c", "lsof -ti tcp:#{port} | xargs kill -9 2>/dev/null || true"])
+        end)
+
+        # The health path specifically, because it is the one that must answer
+        # without a session, without auth and without a database — and there
+        # is no database here.
+        body = await_health(port, 60)
+
+        assert body == "ok",
+               "expected the generated project to serve /health with no database, got: #{inspect(body)}"
+      end)
+    end)
+  end
+
+  defp await_health(_port, 0), do: :never_answered
+
+  defp await_health(port, attempts) do
+    case System.cmd("curl", ["-s", "http://127.0.0.1:#{port}/health"], stderr_to_stdout: true) do
+      {body, 0} when body != "" -> String.trim(body)
+      _ -> Process.sleep(1_000) && await_health(port, attempts - 1)
+    end
+  end
 end
