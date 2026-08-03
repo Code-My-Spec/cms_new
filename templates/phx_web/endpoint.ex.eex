@@ -29,6 +29,22 @@ defmodule <%= @endpoint_module %> do
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
+  # Answered here, above everything else, because the claim is that health
+  # does not depend on the database. In dev `Phoenix.Ecto.CheckRepoStatus`
+  # sits between the endpoint and the router and answers 503 when the
+  # database is absent — so a health route in the router is unreachable
+  # exactly when a probe most wants an answer, and the deploy proxy reads
+  # that 503 as an unhealthy container.
+  plug :health_check
+
+  defp health_check(%Plug.Conn{request_path: "/health"} = conn, _opts) do
+    conn
+    |> Plug.Conn.send_resp(200, "ok")
+    |> Plug.Conn.halt()
+  end
+
+  defp health_check(conn, _opts), do: conn
+
   if code_reloading? do<%= if @html do %>
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader<% end %>

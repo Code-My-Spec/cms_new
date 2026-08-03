@@ -163,4 +163,44 @@ defmodule Mix.Tasks.Cms.NewTest do
       assert File.ls!("cms_blog/.code_my_spec/rules") == [".gitkeep"]
     end)
   end
+
+  test "a generated project carries the deploy boilerplate and a health check that needs no database" do
+    in_tmp("cms new deploy", fn ->
+      Mix.Tasks.Cms.New.run(["cms_blog", "--no-install"])
+
+      # Story 970: the setup routine fills in values and runs commands, so it
+      # can assume these exist rather than generating them.
+      for path <- ~w(Dockerfile .github/workflows/build.yml config/deploy.yml
+                     config/deploy.uat.yml .sops.yaml rel/overlays/bin/migrate
+                     bin/deploy bin/backup) do
+        assert File.exists?("cms_blog/#{path}"), "expected the generator to emit #{path}"
+      end
+
+      # One encrypted env per environment, because story 967 keys them per
+      # environment too.
+      assert File.exists?("cms_blog/envs/prod.enc.env")
+      assert File.exists?("cms_blog/envs/uat.enc.env")
+
+      # The health check answers above the router. A route alone is not
+      # enough: in dev `Phoenix.Ecto.CheckRepoStatus` sits between the
+      # endpoint and the router and answers 503 when the database is absent,
+      # so the probe got a 503 exactly when it most wanted an answer — and the
+      # deploy proxy reads that as an unhealthy container.
+      assert_file("cms_blog/lib/cms_blog_web/endpoint.ex", fn file ->
+        assert file =~ "plug :health_check"
+        assert file =~ ~s|request_path: "/health"|
+
+        assert String.contains?(
+                 String.split(file, "plug :health_check") |> hd(),
+                 "Plug.Static"
+               ),
+               "expected the health plug above the database-aware plugs"
+      end)
+
+      # And the proxy probes over plain HTTP, so force_ssl must not redirect it.
+      assert_file("cms_blog/config/runtime.exs", fn file ->
+        assert file =~ ~s|exclude: ["/health"|
+      end)
+    end)
+  end
 end
