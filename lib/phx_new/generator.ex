@@ -373,11 +373,7 @@ defmodule Phx.New.Generator do
     import Config
 
     # Configure your database
-    #
-    # The MIX_TEST_PARTITION environment variable can be used
-    # to provide built-in test partitioning in CI environment.
-    # Run `mix help test` for more information.
-    config :#{binding[:app_name]}, #{binding[:app_module]}.Repo#{kw_to_config(adapter_config[:test])}
+    #{adapter_config[:test_preamble]}config :#{binding[:app_name]}, #{binding[:app_module]}.Repo#{kw_to_config(adapter_config[:test])}
     """)
 
     prod_only_config_inject(project_path, "config/runtime.exs", """
@@ -471,11 +467,36 @@ defmodule Phx.New.Generator do
         show_sensitive_data_on_connection_error: true,
         pool_size: 10
       ],
+      test_preamble: """
+      #
+      # MIX_TEST_PARTITION gives built-in test partitioning in CI — run
+      # `mix help test` for more. Unset, it defaults to one database per
+      # checkout, so two checkouts cannot re-schema each other.
+      #
+      # A linked git worktree shares this machine's database server. Running the
+      # suite in one migrates the database every other checkout is using, from
+      # whatever branch that one happens to be on. The symptoms never name the
+      # cause: undefined modules first, then NOT NULL violations on columns the
+      # code has never heard of, as the schema shifts under successive runs.
+      #
+      # In a linked worktree `.git` is a file pointing at the real git dir rather
+      # than a directory. That is the whole test. The primary checkout keeps the
+      # bare name, and an explicit MIX_TEST_PARTITION still wins.
+      #
+      # These databases are disposable and nothing sweeps them: `mix ecto.drop`
+      # in a worktree you are finished with.
+      partition =
+        System.get_env("MIX_TEST_PARTITION") ||
+          if File.regular?(Path.join(File.cwd!(), ".git")),
+            do: "_" <> Path.basename(File.cwd!()),
+            else: ""
+
+      """,
       test: [
         username: user,
         password: pass,
         hostname: "localhost",
-        database: {:literal, ~s|"#{app}_test\#{System.get_env("MIX_TEST_PARTITION")}"|},
+        database: {:literal, ~s|"#{app}_test\#{partition}"|},
         pool: Ecto.Adapters.SQL.Sandbox,
         pool_size: {:literal, ~s|System.schedulers_online() * 2|}
       ],
