@@ -6,24 +6,24 @@
 # Setup starts both environments on a single box and can relocate production
 # to its own later; when that happens only the host below changes.
 service: <%= @app_name %>-uat
-image: <%= @app_name %>
+image: <%%= ENV["CMS_IMAGE_REPO"] || "<%= @app_name %>" %>
 
 servers:
   web:
     hosts:
-      - <UAT_HOST_IP>
+      - <%%= ENV["CMS_DEPLOY_HOST_IP"] || "<UAT_HOST_IP>" %>
     options:
       network: db_net
 
 proxy:
   ssl: true
-  host: <UAT_HOST>
+  host: <%%= ENV["CMS_DEPLOY_HOST"] || "<UAT_HOST>" %>
   app_port: 4000
   healthcheck:
     path: /health
 
 registry:
-  server: ghcr.io
+  server: <%%= ENV["CMS_REGISTRY_SERVER"] || "ghcr.io" %>
   username: <GITHUB_USER>
   password:
     - KAMAL_REGISTRY_PASSWORD

@@ -8,12 +8,12 @@
 # Deploy with `bin/deploy` — never `kamal deploy` directly. The wrapper
 # migrates against the new image before moving traffic.
 service: <%= @app_name %>
-image: <%= @app_name %>
+image: <%%= ENV["CMS_IMAGE_REPO"] || "<%= @app_name %>" %>
 
 servers:
   web:
     hosts:
-      - <PROD_HOST_IP>
+      - <%%= ENV["CMS_DEPLOY_HOST_IP"] || "<PROD_HOST_IP>" %>
     options:
       # Pre-attach to the shared network at create time so the container can
       # resolve the database host at boot rather than after a retry.
@@ -21,7 +21,7 @@ servers:
 
 proxy:
   ssl: true
-  host: <PROD_HOST>
+  host: <%%= ENV["CMS_DEPLOY_HOST"] || "<PROD_HOST>" %>
   app_port: 4000
   healthcheck:
     # Outside every router pipeline and excluded from force_ssl — see
@@ -29,7 +29,7 @@ proxy:
     path: /health
 
 registry:
-  server: ghcr.io
+  server: <%%= ENV["CMS_REGISTRY_SERVER"] || "ghcr.io" %>
   username: <GITHUB_USER>
   password:
     - KAMAL_REGISTRY_PASSWORD
