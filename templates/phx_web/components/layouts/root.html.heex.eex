@@ -7,6 +7,67 @@
     <.live_title default="<%= @app_module %>" suffix=" · Phoenix Framework" phx-no-format>{assigns[:page_title]}</.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} /><%= if not @css do %>
     <link phx-track-static rel="stylesheet" href={~p"/assets/default.css"} /><% end %>
+    <script>
+      // Preview bridge. Ships in every build and does nothing at all unless
+      // this page is inside a frame opened by a CodeMySpec preview — checked
+      // against who framed it, not merely whether it is framed.
+      //
+      // Not deferred, and ahead of app.js, so an error thrown while the app
+      // boots is still caught. A render that fails on first paint is exactly
+      // the one worth reporting.
+      (() => {
+        const ORIGINS = [
+          "https://codemyspec.com",
+          "https://dev.codemyspec.com",
+          "http://localhost:4000"
+        ];
+
+        // Not framed: the ordinary case, in production, forever.
+        if (window.parent === window) return;
+
+        // A framed page cannot read its parent's origin, so the referrer is
+        // what there is. Absent or unrecognised means somebody else framed
+        // this app, and the bridge stays shut — it neither reports nor listens.
+        let framer;
+        try {
+          framer = new URL(document.referrer).origin;
+        } catch (_) {
+          return;
+        }
+        if (!ORIGINS.includes(framer)) return;
+
+        const send = (type, payload) =>
+          window.parent.postMessage({ source: "cms-preview", type, payload }, framer);
+
+        window.addEventListener("error", (e) =>
+          send("error", {
+            message: e.message,
+            source: e.filename,
+            line: e.lineno,
+            column: e.colno,
+            stack: e.error && e.error.stack
+          })
+        );
+
+        window.addEventListener("unhandledrejection", (e) =>
+          send("error", { message: String(e.reason), stack: e.reason && e.reason.stack })
+        );
+
+        // LiveView reports its own death, which a window error does not catch:
+        // the crash happened on the server and arrives here as a reload.
+        window.addEventListener("phx:error", (e) =>
+          send("error", { message: "LiveView error", detail: e.detail })
+        );
+
+        window.addEventListener("message", (e) => {
+          if (e.origin !== framer) return;
+          if (!e.data || e.data.source !== "cms-preview-host") return;
+          if (e.data.type === "ping") send("pong", {});
+        });
+
+        send("ready", { url: window.location.href });
+      })();
+    </script>
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script><%= if @css do %>
     <script>
