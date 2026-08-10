@@ -136,20 +136,31 @@ fi
 #    That is also the one case where the ordering does not matter: there is no
 #    previous version to keep serving. So the first deploy boots and then
 #    migrates, and every one after it migrates first.
-#    Detected on what it prints, not on how it exits: `kamal app version`
-#    reports success with nothing running, so an exit-status check called
-#    every deploy an existing one and the first deploy went on failing for
-#    exactly the reason this guard was added to prevent.
-FIRST_DEPLOY=""
-RUNNING_VERSION="$(kamal app version -c "$CONFIG" 2>/dev/null | tr -cd '[:alnum:]')"
-if [ -z "$RUNNING_VERSION" ]; then
-  FIRST_DEPLOY=1
-  echo "nothing deployed here yet - booting before migrating"
-fi
+#    Whether the env files are on the host is not predictable from here.
+#    `kamal app version` prints host and INFO lines with nothing deployed, so
+#    neither its exit status nor whether it printed anything distinguishes a
+#    first deploy — both were tried, and both called every deploy an existing
+#    one. So attempt the migration and read the refusal: docker names the
+#    missing file exactly, and a genuine migration failure does not.
+DEFERRED_MIGRATE=""
+if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
+  MIGRATE_LOG="$(mktemp)"
 
-if [ -z "$FIRST_DEPLOY" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
-  kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
-  echo "migrated=$VERSION"
+  if kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate" \
+      >"$MIGRATE_LOG" 2>&1; then
+    cat "$MIGRATE_LOG"
+    echo "migrated=$VERSION"
+  elif grep -q "env/roles/.*\.env: no such file or directory" "$MIGRATE_LOG"; then
+    DEFERRED_MIGRATE=1
+    echo "nothing has booted here yet, so there is no env on the host -"
+    echo "migrating after the first boot instead"
+  else
+    cat "$MIGRATE_LOG" >&2
+    rm -f "$MIGRATE_LOG"
+    exit 1
+  fi
+
+  rm -f "$MIGRATE_LOG"
 fi
 
 # 5. Swap traffic. The proxy gates this on /health, so an unhealthy version
@@ -161,7 +172,7 @@ if [ "$PHASE" = "all" ] || [ "$PHASE" = "swap" ]; then
   # The first deploy's migration, now that booting has put the env files on
   # the host. The healthcheck has already passed, so this runs against a
   # container that is up.
-  if [ -n "$FIRST_DEPLOY" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
+  if [ -n "$DEFERRED_MIGRATE" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
     kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
     echo "migrated=$VERSION"
   fi
