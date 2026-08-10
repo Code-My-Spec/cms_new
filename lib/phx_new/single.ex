@@ -144,6 +144,7 @@ defmodule Phx.New.Single do
      "deploy/deploy.uat.yml.eex": "config/deploy.uat.yml",
      "deploy/sops.yaml.eex": ".sops.yaml",
      "deploy/migrate.eex": "rel/overlays/bin/migrate",
+     "deploy/server.eex": "rel/overlays/bin/server",
      "deploy/deploy_script.eex": "bin/deploy",
      "deploy/kamal_secrets.eex": ".kamal/secrets",
      "deploy/backup_script.eex": "bin/backup"}
@@ -264,9 +265,16 @@ defmodule Phx.New.Single do
       )
     end
 
-    # Executable: all three are run directly, and a non-executable bin/deploy
-    # is a confusing first failure on a fresh clone.
-    for script <- ["bin/deploy", "bin/backup", "rel/overlays/bin/migrate"] do
+    # Executable: every one of these is run directly, and a non-executable
+    # bin/deploy is a confusing first failure on a fresh clone. `server` is
+    # the container's CMD, so a non-executable one fails at container start
+    # with a permission error rather than anywhere near the cause.
+    for script <- [
+          "bin/deploy",
+          "bin/backup",
+          "rel/overlays/bin/migrate",
+          "rel/overlays/bin/server"
+        ] do
       path = Path.join(project.project_path, script)
       if File.exists?(path), do: File.chmod!(path, 0o755)
     end

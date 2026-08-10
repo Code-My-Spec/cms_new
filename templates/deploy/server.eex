@@ -1,0 +1,15 @@
+#!/bin/sh
+# Release overlay: start the app with the web endpoint actually serving.
+#
+# `mix release` builds a `start` that boots the application and nothing else —
+# Phoenix reads `PHX_SERVER` at runtime and only starts the endpoint when it is
+# set. Without this wrapper a container comes up, reports healthy to nothing,
+# and refuses every connection, because the supervision tree is running and the
+# web server was never asked for.
+#
+# The Dockerfile's CMD names this file. An image without it starts and dies:
+#
+#   exec: "/app/bin/server": stat /app/bin/server: no such file or directory
+set -eu
+cd -P -- "$(dirname -- "$0")"
+PHX_SERVER=true exec ./<%= @app_name %> start
