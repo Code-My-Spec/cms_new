@@ -152,6 +152,10 @@ if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
     echo "migrated=$VERSION"
   elif grep -q "env/roles/.*\.env: no such file or directory" "$MIGRATE_LOG"; then
     DEFERRED_MIGRATE=1
+    # Machine-readable, like `migrated=` and `swapped=` below. The caller
+    # cannot health-check a previous version that does not exist, and this is
+    # the only place that knows there isn't one.
+    echo "first_deploy=1"
     echo "nothing has booted here yet, so there is no env on the host -"
     echo "migrating after the first boot instead"
   else
