@@ -56,12 +56,17 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [ -n "${CMS_IMAGE:-}" ]; then
   # `repo:tag` split from the right, because the registry host carries a port
   # and therefore a colon of its own: localhost:5000/app:abc123.
-  export CMS_IMAGE_REPO="${CMS_IMAGE%:*}"
+  CMS_IMAGE_PATH="${CMS_IMAGE%:*}"
   VERSION="${CMS_IMAGE##*:}"
   # The registry kamal should talk to is the host part of the reference, not
   # ghcr.io. Derived rather than passed separately, so the two cannot disagree
   # about where the image is.
-  export CMS_REGISTRY_SERVER="${CMS_IMAGE_REPO%%/*}"
+  export CMS_REGISTRY_SERVER="${CMS_IMAGE_PATH%%/*}"
+  # kamal composes its `image:` under `registry.server`, so this is the
+  # repository WITHOUT the host. Set to the whole path it produced
+  # `10.0.0.3:5000/10.0.0.3:5000/app:sha` and the pull failed on a name no
+  # registry has.
+  export CMS_IMAGE_REPO="${CMS_IMAGE_PATH#*/}"
   echo "deploying the image setup built: $CMS_IMAGE"
 else
   git push origin "$BRANCH"
@@ -95,14 +100,21 @@ fi
 #
 #    Checked for emptiness before proceeding: an empty value does not fail
 #    loudly, it produces a container that boots without secrets.
-KEY_FILE="envs/${ENV_NAME}.age.key"
-if [ ! -f "$KEY_FILE" ]; then
-  echo "missing $KEY_FILE — the deploy carries this to the host as SOPS_AGE_KEY" >&2
-  exit 1
-fi
+#    Already in the environment when setup runs this: it holds the key in its
+#    own secret store and deliberately never writes the private half into the
+#    repository. A person running this by hand keeps it in envs/<env>.age.key,
+#    which is gitignored.
+if [ -z "${SOPS_AGE_KEY:-}" ]; then
+  KEY_FILE="envs/${ENV_NAME}.age.key"
 
-export SOPS_AGE_KEY
-SOPS_AGE_KEY=$(cat "$KEY_FILE")
+  if [ ! -f "$KEY_FILE" ]; then
+    echo "missing $KEY_FILE, and SOPS_AGE_KEY is not set — the deploy carries this to the host" >&2
+    exit 1
+  fi
+
+  export SOPS_AGE_KEY
+  SOPS_AGE_KEY=$(cat "$KEY_FILE")
+fi
 
 if [ -z "${SOPS_AGE_KEY:-}" ]; then
   echo "ERROR: SOPS_AGE_KEY is empty; refusing to deploy" >&2
