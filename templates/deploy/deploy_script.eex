@@ -124,17 +124,25 @@ fi
 # 4. Migrate against the NEW image BEFORE traffic moves. The currently
 #    serving container keeps handling requests against the migrated schema
 #    until step 5 swaps it out.
-if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
-  # `kamal deploy` writes the env files on the host, and it does not run until
-  # step 5 — so on a box that has never been deployed to, the migrate ran
-  # first and docker refused:
-  #
-  #   docker: open .kamal/apps/<app>/env/roles/web.env: no such file or
-  #   directory
-  #
-  # Pushing them here makes the first deploy work the same way the second one
-  # already did.
-  kamal env push -c "$CONFIG"
+#
+#    Only when something is already serving. kamal uploads the env files as
+#    part of booting a container and has no command that only pushes them, so
+#    on a host that has never been deployed to there is nothing for the
+#    migration container to read:
+#
+#      docker: open .kamal/apps/<app>/env/roles/web.env: no such file or
+#      directory
+#
+#    That is also the one case where the ordering does not matter: there is no
+#    previous version to keep serving. So the first deploy boots and then
+#    migrates, and every one after it migrates first.
+FIRST_DEPLOY=""
+if ! kamal app version -c "$CONFIG" >/dev/null 2>&1; then
+  FIRST_DEPLOY=1
+  echo "nothing deployed here yet - booting before migrating"
+fi
+
+if [ -z "$FIRST_DEPLOY" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
   kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
   echo "migrated=$VERSION"
 fi
@@ -144,6 +152,14 @@ fi
 if [ "$PHASE" = "all" ] || [ "$PHASE" = "swap" ]; then
   kamal deploy --skip-push --version="$VERSION" -c "$CONFIG" "${@:2}"
   echo "swapped=$VERSION"
+
+  # The first deploy's migration, now that booting has put the env files on
+  # the host. The healthcheck has already passed, so this runs against a
+  # container that is up.
+  if [ -n "$FIRST_DEPLOY" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
+    kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
+    echo "migrated=$VERSION"
+  fi
   echo
   echo "deployed $VERSION to $ENV_NAME"
 fi
