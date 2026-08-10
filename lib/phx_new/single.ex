@@ -145,6 +145,7 @@ defmodule Phx.New.Single do
      "deploy/sops.yaml.eex": ".sops.yaml",
      "deploy/migrate.eex": "rel/overlays/bin/migrate",
      "deploy/deploy_script.eex": "bin/deploy",
+     "deploy/kamal_secrets.eex": ".kamal/secrets",
      "deploy/backup_script.eex": "bin/backup"}
   ])
 

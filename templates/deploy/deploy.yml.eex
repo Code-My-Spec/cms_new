@@ -30,7 +30,7 @@ proxy:
 
 registry:
   server: <%%= ENV["CMS_REGISTRY_SERVER"] || "ghcr.io" %>
-  username: <GITHUB_USER>
+  username: <%%= ENV["KAMAL_REGISTRY_USERNAME"] || "<GITHUB_USER>" %>
   password:
     - KAMAL_REGISTRY_PASSWORD
 
@@ -48,7 +48,7 @@ env:
     # APP_ENV, not MIX_ENV. One prod image serves both environments and this
     # is what selects which secrets it decrypts.
     APP_ENV: prod
-    PHX_HOST: <PROD_HOST>
+    PHX_HOST: <%%= ENV["CMS_DEPLOY_HOST"] || "<PROD_HOST>" %>
     PORT: 4000
   secret:
     # The only secret the deploy tool carries. Everything else is decrypted
@@ -57,3 +57,16 @@ env:
 
 ssh:
   user: root
+  # Which key, and only that key. Without this, kamal's net-ssh offers every
+  # identity the agent holds and a box with the default `MaxAuthTries 6`
+  # disconnects before reaching the right one:
+  #
+  #   ERROR (Net::SSH::Disconnect): disconnected: Too many authentication
+  #   failures (2)
+  #
+  # Setup passes the path to the key it provisioned the box with. A person
+  # running this by hand falls through to their own agent, which is what they
+  # want.
+<%% if ENV["CMS_SSH_KEY_PATH"] %>  keys_only: true
+  keys: [ "<%%= ENV["CMS_SSH_KEY_PATH"] %>" ]
+<%% end %>

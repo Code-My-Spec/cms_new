@@ -125,6 +125,16 @@ fi
 #    serving container keeps handling requests against the migrated schema
 #    until step 5 swaps it out.
 if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
+  # `kamal deploy` writes the env files on the host, and it does not run until
+  # step 5 — so on a box that has never been deployed to, the migrate ran
+  # first and docker refused:
+  #
+  #   docker: open .kamal/apps/<app>/env/roles/web.env: no such file or
+  #   directory
+  #
+  # Pushing them here makes the first deploy work the same way the second one
+  # already did.
+  kamal env push -c "$CONFIG"
   kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
   echo "migrated=$VERSION"
 fi
