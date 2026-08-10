@@ -144,7 +144,8 @@ defmodule Phx.New.Single do
      "deploy/deploy.uat.yml.eex": "config/deploy.uat.yml",
      "deploy/sops.yaml.eex": ".sops.yaml",
      "deploy/migrate.eex": "rel/overlays/bin/migrate",
-     "deploy/deploy_script.eex": "bin/deploy"}
+     "deploy/deploy_script.eex": "bin/deploy",
+     "deploy/backup_script.eex": "bin/backup"}
   ])
 
   # Rendered by gen_deploy/1 into one file per environment; the target below
@@ -262,9 +263,9 @@ defmodule Phx.New.Single do
       )
     end
 
-    # Executable: both are run directly, and a non-executable bin/deploy is a
-    # confusing first failure on a fresh clone.
-    for script <- ["bin/deploy", "rel/overlays/bin/migrate"] do
+    # Executable: all three are run directly, and a non-executable bin/deploy
+    # is a confusing first failure on a fresh clone.
+    for script <- ["bin/deploy", "bin/backup", "rel/overlays/bin/migrate"] do
       path = Path.join(project.project_path, script)
       if File.exists?(path), do: File.chmod!(path, 0o755)
     end
