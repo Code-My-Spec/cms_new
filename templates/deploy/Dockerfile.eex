@@ -37,12 +37,20 @@ COPY priv priv
 COPY lib lib
 COPY assets assets
 
+# Compile BEFORE building assets. Phoenix 1.8 extracts colocated hooks and CSS
+# during compilation, into `phoenix-colocated/<app>/`, and `assets/css/app.css`
+# imports `phoenix-colocated/<app>/colocated.css` from there. Built the other
+# way round, tailwind cannot resolve that import and the build fails with
+#
+#   Error: Can't resolve 'phoenix-colocated/<app>/colocated.css'
+#
+# which names a file nobody wrote and no template contains.
+RUN mix compile
+
 # `mix assets.deploy` downloads tailwind/esbuild binaries on first run, and
 # that download is the flakiest step in the whole build. One retry turns a
 # transient network blip into a slower build instead of a failed deploy.
 RUN mix assets.deploy || (echo "assets.deploy failed, retrying once" && mix assets.deploy)
-
-RUN mix compile
 
 # runtime.exs is read at boot, not compile time, so it is copied after
 # compilation.
