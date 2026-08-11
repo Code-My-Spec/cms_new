@@ -20,6 +20,16 @@ if System.get_env("PHX_SERVER") do
   config :<%= @app_name %>, <%= @endpoint_module %>, server: true
 end
 
+# The port, for every environment — deliberately outside the `:prod` guard
+# below. A workspace container is handed its port through the environment and
+# has no opportunity to edit config, so this has to be the one place that
+# decides it.
+#
+# The consequence is worth stating where somebody will hit it: setting a port in
+# `config/dev.exs` does nothing, because this runs afterwards and overrides it.
+# The symptom is `:eaddrinuse` on 4000 — a port you did not configure and cannot
+# find in dev.exs — and the fix is `PORT=4321 mix phx.server` rather than a
+# config change.
 config :<%= @app_name %>, <%= @endpoint_module %>,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
