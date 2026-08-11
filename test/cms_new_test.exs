@@ -172,9 +172,42 @@ defmodule Mix.Tasks.Cms.NewTest do
       # can assume these exist rather than generating them.
       for path <- ~w(Dockerfile .github/workflows/build.yml config/deploy.yml
                      config/deploy.uat.yml .sops.yaml rel/overlays/bin/migrate
-                     bin/deploy bin/backup) do
+                     rel/overlays/bin/server bin/deploy bin/backup) do
         assert File.exists?("cms_blog/#{path}"), "expected the generator to emit #{path}"
       end
+
+      # The container's CMD names bin/server. Every generated app carried
+      # `CMD ["/app/bin/server"]` and nothing that produced that file, so every
+      # image built from one started and immediately died with
+      # `stat /app/bin/server: no such file or directory`.
+      #
+      # PHX_SERVER is the other half: `mix release` builds a `start` that boots
+      # the application without the endpoint, so a container without this
+      # serves nothing while looking alive.
+      server = File.read!("cms_blog/rel/overlays/bin/server")
+      assert server =~ "PHX_SERVER=true"
+      assert server =~ "cms_blog start"
+
+      for script <- ~w(bin/deploy bin/backup rel/overlays/bin/migrate rel/overlays/bin/server) do
+        %{mode: mode} = File.stat!("cms_blog/#{script}")
+
+        assert Bitwise.band(mode, 0o100) != 0,
+               "#{script} is not executable, which fails at container start rather than near the cause"
+      end
+
+      # kamal composes `image:` under `registry.server`, so the repository name
+      # must not carry the host. Exporting the whole path produced
+      # `10.0.0.3:5000/10.0.0.3:5000/app:sha` and the pull failed on a name no
+      # registry has.
+      deploy = File.read!("cms_blog/bin/deploy")
+      assert deploy =~ ~s(CMS_IMAGE_REPO="${CMS_IMAGE_PATH#*/}")
+      assert deploy =~ ~s(CMS_REGISTRY_SERVER="${CMS_IMAGE_PATH%%/*}")
+
+      # PHX_HOST travels into every URL Phoenix builds. It was the literal
+      # placeholder while `proxy.host` beside it read the real value.
+      uat = File.read!("cms_blog/config/deploy.uat.yml")
+      assert uat =~ ~s(PHX_HOST: <%= ENV["CMS_DEPLOY_HOST"])
+      refute uat =~ "PHX_HOST: <UAT_HOST>"
 
       # One encrypted env per environment, because story 967 keys them per
       # environment too.
