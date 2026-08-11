@@ -36,8 +36,20 @@
         }
         if (!ORIGINS.includes(framer)) return;
 
-        const send = (type, payload) =>
+        // Buffered until the host proves it is listening. The host's hook
+        // mounts when its LiveView connects, which is after this page has
+        // loaded and possibly already thrown — and postMessage has no replay,
+        // so anything sent before then is simply gone. That is exactly the
+        // first-paint failure this script is not deferred in order to catch,
+        // so losing it would defeat the point of catching it.
+        let listening = false;
+        const pending = [];
+
+        const post = (type, payload) =>
           window.parent.postMessage({ source: "cms-preview", type, payload }, framer);
+
+        const send = (type, payload) =>
+          listening ? post(type, payload) : pending.push([type, payload]);
 
         window.addEventListener("error", (e) =>
           send("error", {
@@ -59,10 +71,19 @@
           send("error", { message: "LiveView error", detail: e.detail })
         );
 
+        // Any recognised message from the host means someone is on the other
+        // end. Flush what happened before they got there, in order, then run
+        // live from here.
         window.addEventListener("message", (e) => {
           if (e.origin !== framer) return;
           if (!e.data || e.data.source !== "cms-preview-host") return;
-          if (e.data.type === "ping") send("pong", {});
+
+          if (!listening) {
+            listening = true;
+            pending.splice(0).forEach(([type, payload]) => post(type, payload));
+          }
+
+          if (e.data.type === "ping") post("pong", {});
         });
 
         send("ready", { url: window.location.href });
