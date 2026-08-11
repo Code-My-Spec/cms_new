@@ -221,6 +221,14 @@ defmodule Mix.Tasks.Cms.NewTest do
         assert config =~ ~s(port: <%= ENV["CMS_SSH_PORT"] %>)
       end
 
+      # mix.exs declares `elixir: "~> 1.20"`, so without a pin beside it the app
+      # refuses to run anywhere the default is older — naming neither the fix
+      # nor the version to install. `mix deps.get` succeeds first, so the tree
+      # looks healthy right up until the first task that matters.
+      tool_versions = File.read!("cms_blog/.tool-versions")
+      assert tool_versions =~ "elixir 1.20"
+      assert tool_versions =~ "erlang"
+
       # One encrypted env per environment, because story 967 keys them per
       # environment too.
       assert File.exists?("cms_blog/envs/prod.enc.env")

@@ -28,6 +28,17 @@ defmodule Phx.New.Single do
      "phx_single/README.md.eex": "README.md",
      "phx_single/formatter.exs.eex": ".formatter.exs",
      "phx_single/gitignore.eex": ".gitignore",
+     # mix.exs declares `elixir: "~> 1.20"`, and without a pin beside it the
+     # app simply refuses to run anywhere the default is older:
+     #
+     #   ** (Mix) You're trying to run :my_app on Elixir v1.19.4 but it has
+     #   declared in its mix.exs file it supports only Elixir ~> 1.20
+     #
+     # Which is a true statement that names neither the fix nor the version to
+     # install, and it arrives on the first `mix` command in a brand new app.
+     # Worse, `mix deps.get` succeeds first — so the tree looks fine right up
+     # until the first task that matters.
+     "phx_single/tool_versions.eex": ".tool-versions",
      "phx_test/support/conn_case.ex.eex": "test/support/conn_case.ex",
      "phx_single/test/test_helper.exs.eex": "test/test_helper.exs",
      "phx_test/controllers/error_json_test.exs.eex":
