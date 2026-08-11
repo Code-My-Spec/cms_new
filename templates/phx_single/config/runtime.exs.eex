@@ -25,13 +25,23 @@ end
 # has no opportunity to edit config, so this has to be the one place that
 # decides it.
 #
-# The consequence is worth stating where somebody will hit it: setting a port in
-# `config/dev.exs` does nothing, because this runs afterwards and overrides it.
-# The symptom is `:eaddrinuse` on 4000 — a port you did not configure and cannot
-# find in dev.exs — and the fix is `PORT=4321 mix phx.server` rather than a
-# config change.
+# The default is 4100, not Phoenix's 4000, because a generated app is not the
+# only thing on the machine that generated it. CodeMySpec's own dev server runs
+# on 4000, and an app generated to be worked on beside it collided by
+# construction: `mix phx.server` in a fresh app either failed with `:eaddrinuse`
+# on a port it never configured, or took the platform's port and stopped every
+# other agent's hooks and analysis runs. That happened three times in one hour
+# on this machine before anyone worked out which process was which — the app
+# reports a port it cannot find in its own dev.exs, and the server reports a
+# clean shutdown that reads as somebody restarting it on purpose.
+#
+# `PORT` still wins, so containers and platforms are unaffected.
+#
+# Worth stating where somebody will hit it: setting a port in `config/dev.exs`
+# does nothing, because this runs afterwards and overrides it. Use
+# `PORT=4321 mix phx.server`.
 config :<%= @app_name %>, <%= @endpoint_module %>,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [port: String.to_integer(System.get_env("PORT", "4100"))]
 
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.

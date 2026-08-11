@@ -12,13 +12,17 @@ import Config
 # has no opportunity to edit config, so this has to be the one place that
 # decides it.
 #
-# The consequence is worth stating where somebody will hit it: setting a port in
-# `config/dev.exs` does nothing, because this runs afterwards and overrides it.
-# The symptom is `:eaddrinuse` on 4000 — a port you did not configure and cannot
-# find in dev.exs — and the fix is `PORT=4321 mix phx.server` rather than a
-# config change.
+# The default is 4100, not Phoenix's 4000, because a generated app is not the
+# only thing on the machine that generated it. CodeMySpec's own dev server runs
+# on 4000, and an app generated to be worked on beside it collided by
+# construction — three outages in one hour on this machine before anyone worked
+# out which process was which. `PORT` still wins, so containers are unaffected.
+#
+# Worth stating where somebody will hit it: setting a port in `config/dev.exs`
+# does nothing, because this runs afterwards and overrides it. Use
+# `PORT=4321 mix phx.server`.
 config :<%= @web_app_name %>, <%= @endpoint_module %>,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [port: String.to_integer(System.get_env("PORT", "4100"))]
 
 if config_env() == :prod do
   config :<%= @app_name %>, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

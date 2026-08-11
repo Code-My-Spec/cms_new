@@ -66,8 +66,13 @@ defmodule Mix.Tasks.Phx.NewTest do
       end)
 
       assert_file("phx_blog/config/runtime.exs", fn file ->
+        # 4100, not Phoenix's 4000: a generated app shares a machine with the
+        # platform that generated it, whose dev server is on 4000. Pinned here
+        # because the collision is silent from both sides — the app reports
+        # `:eaddrinuse` on a port absent from its own dev.exs, and the server
+        # reports a clean shutdown.
         assert file =~
-                 ~r/^  http: \[port: String.to_integer\(System.get_env\("PORT", "4000"\)\)\]$/m
+                 ~r/^  http: \[port: String.to_integer\(System.get_env\("PORT", "4100"\)\)\]$/m
 
         assert file =~ ~r/^\s+ip: {0, 0, 0, 0, 0, 0, 0, 0}$/m
       end)
