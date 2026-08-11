@@ -209,6 +209,18 @@ defmodule Mix.Tasks.Cms.NewTest do
       assert uat =~ ~s(PHX_HOST: <%= ENV["CMS_DEPLOY_HOST"])
       refute uat =~ "PHX_HOST: <UAT_HOST>"
 
+      # A real box is on 22, so this renders to nothing there. It exists so a
+      # deploy can be aimed at a local container fleet over a published
+      # loopback port — the fleet is only worth having if it drives this same
+      # config, and the moment it needs a config of its own it stops answering
+      # the question it was built to answer.
+      prod = File.read!("cms_blog/config/deploy.yml")
+
+      for config <- [uat, prod] do
+        assert config =~ ~s(<% if ENV["CMS_SSH_PORT"] %>)
+        assert config =~ ~s(port: <%= ENV["CMS_SSH_PORT"] %>)
+      end
+
       # One encrypted env per environment, because story 967 keys them per
       # environment too.
       assert File.exists?("cms_blog/envs/prod.enc.env")

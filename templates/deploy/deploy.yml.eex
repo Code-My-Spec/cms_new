@@ -70,3 +70,9 @@ ssh:
 <%% if ENV["CMS_SSH_KEY_PATH"] %>  keys_only: true
   keys: [ "<%%= ENV["CMS_SSH_KEY_PATH"] %>" ]
 <%% end %>
+<%% if ENV["CMS_SSH_PORT"] %>  # Unset for any real box, which is on 22. This exists so the deploy can be
+  # aimed at a local container fleet over a published loopback port — and the
+  # point of that fleet is to run this same config rather than a parallel one,
+  # so it gets a knob instead of a copy.
+  port: <%%= ENV["CMS_SSH_PORT"] %>
+<%% end %>
