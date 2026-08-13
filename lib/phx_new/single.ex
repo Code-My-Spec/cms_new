@@ -15,6 +15,11 @@ defmodule Phx.New.Single do
      # Endpoint, so it belongs to the web namespace, not the app one.
      "phx_single/lib/app_name/application.ex.eex": "lib/:lib_web_name/application.ex",
      "phx_single/lib/app_name.ex.eex": "lib/:app.ex",
+     # `rel/overlays/bin/migrate` calls `<App>.Release.migrate/0`, so the
+     # module it calls has to exist. Without it the deploy reaches the
+     # migration container and dies on `UndefinedFunctionError`, reported as
+     # "Migration failed (exit 1) — the previous version is still serving".
+     "phx_single/lib/app_name/release.ex.eex": "lib/:app/release.ex",
      "phx_web/controllers/error_json.ex.eex": "lib/:lib_web_name/controllers/error_json.ex",
      # Health endpoint ships regardless of --no-html: the deploy proxy gates
      # the traffic swap on it either way.

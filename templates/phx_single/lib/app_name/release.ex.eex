@@ -1,0 +1,43 @@
+defmodule <%= @app_module %>.Release do
+  @moduledoc """
+  Tasks that run inside the release, where Mix is not available.
+
+  `bin/migrate` — the release overlay the deploy runs before it moves traffic —
+  calls `migrate/0` here. Without this module the deploy reaches the migration
+  container and dies with
+
+      ** (UndefinedFunctionError) function <%= @app_module %>.Release.migrate/0
+      is undefined (module <%= @app_module %>.Release is not available)
+
+  which the deploy reports as "Migration failed (exit 1) — the previous version
+  is still serving", naming neither the module nor the missing file.
+
+  `load/0` rather than `ensure_all_started/1`: the repo is started by hand, one
+  at a time, so a migration never races the application's own supervision tree.
+  """
+
+  @app :<%= @app_name %>
+
+  @doc "Run every pending migration for every repo."
+  def migrate do
+    load_app()
+
+    for repo <- repos() do
+      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    end
+  end
+
+  @doc "Roll `repo` back to `version`."
+  def rollback(repo, version) do
+    load_app()
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  defp repos do
+    Application.fetch_env!(@app, :ecto_repos)
+  end
+
+  defp load_app do
+    Application.load(@app)
+  end
+end
