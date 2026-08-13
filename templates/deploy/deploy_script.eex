@@ -153,8 +153,15 @@ if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
   elif grep -q "env/roles/.*\.env: no such file or directory" "$MIGRATE_LOG"; then
     DEFERRED_MIGRATE=1
     # Machine-readable, like `migrated=` and `swapped=` below. The caller
-    # cannot health-check a previous version that does not exist, and this is
-    # the only place that knows there isn't one.
+    # cannot health-check a previous version that does not exist.
+    #
+    # Not the only place that knows any more, and it must not be: this branch
+    # only runs when migrate FAILS for want of host env files, and migrate
+    # stopped needing those once it began decrypting secrets baked into the
+    # image. A first deploy then succeeded, printed nothing, and every new
+    # site health-checked a host serving nothing. Release.migrate/0 now prints
+    # the same marker when it finds a database with no migrations applied,
+    # which covers the success path this branch cannot see.
     echo "first_deploy=1"
     echo "nothing has booted here yet, so there is no env on the host -"
     echo "migrating after the first boot instead"
