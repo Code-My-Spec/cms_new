@@ -35,8 +35,32 @@ load_env() {
   local key_file="envs/${env_name}.age.key"
   local enc_file="envs/${env_name}.enc.env"
 
-  if [ ! -f "$key_file" ]; then
-    echo "missing $key_file — the backup needs this environment's age key" >&2
+  # SOPS_AGE_KEY first, the key file second — the same order bin/deploy uses,
+  # and for the same reason.
+  #
+  # Setup holds the private half in its own secret store and deliberately never
+  # writes it into the repository, so it hands it over in the environment
+  # (`Backups.script_env/1` sets SOPS_AGE_KEY, and says so). This script only
+  # ever looked for the file, so every setup-run backup died on "missing
+  # envs/<env>.age.key" — a key that was present, passed correctly, and never
+  # read. The message named a file nobody had promised to write, which reads
+  # like the secrets step failed rather than like the two halves disagreeing.
+  #
+  # The file stays the fallback: a person running this by hand keeps it in
+  # envs/<env>.age.key, and cron on the server has neither a caller nor a
+  # terminal, so it needs a source of its own.
+  if [ -z "${SOPS_AGE_KEY:-}" ]; then
+    if [ ! -f "$key_file" ]; then
+      echo "missing $key_file, and SOPS_AGE_KEY is not set — the backup needs this environment's age key" >&2
+      exit 1
+    fi
+
+    export SOPS_AGE_KEY
+    SOPS_AGE_KEY=$(cat "$key_file")
+  fi
+
+  if [ -z "${SOPS_AGE_KEY:-}" ]; then
+    echo "ERROR: SOPS_AGE_KEY is empty; refusing to back up" >&2
     exit 1
   fi
 
@@ -47,7 +71,7 @@ load_env() {
 
   set -a
   # shellcheck disable=SC1090
-  source <(SOPS_AGE_KEY="$(cat "$key_file")" sops --decrypt "$enc_file")
+  source <(sops --decrypt "$enc_file")
   set +a
 
   for var in DATABASE_URL BACKUP_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
