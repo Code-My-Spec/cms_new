@@ -11,14 +11,19 @@ config :<%= @web_app_name %>, <%= @endpoint_module %>, cache_static_manifest: "p
 <% end %># Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
 # Note `:force_ssl` is required to be set at compile-time.
+# Identical to the value `config/runtime.exs` sets, and it has to be. Phoenix
+# marks `:force_ssl` as a compile-time key, so a runtime value that differs
+# does not take effect — it aborts the boot:
+#
+#   ERROR! the application :<%= @web_app_name %> has a different value set for
+#   path [:force_ssl] inside key <%= @endpoint_module %> during runtime
+#   compared to compile time
+#
+# Which arrives as a container that never becomes healthy, the proxy waiting
+# out its deploy timeout, and a deploy reporting a failed traffic swap. Nothing
+# in that names the config, and every generated app hit it.
 config :<%= @web_app_name %>, <%= @endpoint_module %>,
-  force_ssl: [
-    rewrite_on: [:x_forwarded_proto],
-    exclude: [
-      # paths: ["/health"],
-      hosts: ["localhost", "127.0.0.1"]
-    ]
-  ]<%= if @mailer do %>
+  force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: ["/health", "localhost", "127.0.0.1"]]<%= if @mailer do %>
 
 # Configure Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
