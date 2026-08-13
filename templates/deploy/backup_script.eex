@@ -103,6 +103,30 @@ s3() {
   fi
 }
 
+# ecto:// is the app's scheme, not libpq's.
+#
+# Ecto reads DATABASE_URL as ecto://user:pass@host/db and Phoenix apps write it
+# that way, so that is what setup puts in the encrypted env. pg_dump does not
+# know the scheme, and rather than refusing it falls back to reading the whole
+# string as a *database name* over a local socket:
+#
+#   pg_dump: error: connection to server on socket "/tmp/.s.PGSQL.5432"
+#   failed: FATAL: database "ecto://app:...@cms-post" does not exist
+#
+# Which names a socket nobody configured and a database nobody asked for, and
+# says nothing about the one character that is wrong. Translated here rather
+# than by changing what setup writes: the app's variable stays canonical and
+# the tool that needs libpq's spelling gets it.
+#
+# At the top level, because restoring needs the same translation as dumping and
+# a function defined inside cmd_dump would not exist until cmd_dump had run.
+libpq_url() {
+  case "$1" in
+    ecto://*) echo "postgresql://${1#ecto://}" ;;
+    *) echo "$1" ;;
+  esac
+}
+
 cmd_dump() {
   local env_name="${1:-prod}"
   load_env "$env_name"
@@ -112,7 +136,7 @@ cmd_dump() {
   key="dumps/${env_name}-${stamp}.sql.gz"
   TMPFILE=$(mktemp)
 
-  pg_dump --no-owner --no-acl "$DATABASE_URL" | gzip -9 > "$TMPFILE"
+  pg_dump --no-owner --no-acl "$(libpq_url "$DATABASE_URL")" | gzip -9 > "$TMPFILE"
 
   # A zero-byte dump uploads perfectly happily and restores into nothing.
   if [ ! -s "$TMPFILE" ]; then
@@ -138,11 +162,13 @@ cmd_restore() {
 
   # The target is dropped and recreated: restoring into a database that
   # already has rows would count someone else's data as proof.
-  local admin_url="${DATABASE_URL%/*}/postgres"
+  local admin_url
+  admin_url="$(libpq_url "${DATABASE_URL%/*}/postgres")"
   psql -v ON_ERROR_STOP=1 -q "$admin_url" -c "DROP DATABASE IF EXISTS \"$target\";"
   psql -v ON_ERROR_STOP=1 -q "$admin_url" -c "CREATE DATABASE \"$target\";"
 
-  local target_url="${DATABASE_URL%/*}/${target}"
+  local target_url
+  target_url="$(libpq_url "${DATABASE_URL%/*}/${target}")"
   gunzip -c "$TMPFILE" | psql -v ON_ERROR_STOP=1 -q "$target_url" >/dev/null
 
   # Row count across every user table. The question this answers is "did the
