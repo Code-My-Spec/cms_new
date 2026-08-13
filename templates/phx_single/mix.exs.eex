@@ -94,7 +94,18 @@ defmodule <%= @app_module %>.MixProject do
       {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.14.1", only: [:dev, :test], runtime: false},
       {:sexy_spex, "~> 0.2", only: [:dev, :test]},
-      {:code_my_spec_generators, "~> 0.1.0", only: :dev}
+      # `~> 0.2`, not `~> 0.1.0`. 0.2.0 is the release where the generators
+      # apply the two edits they previously only *printed* instructions for —
+      # without it `cms_gen.accounts` leaves `Users.Scope` without
+      # `active_account_id`, the accounts module it just wrote references that
+      # field, and the generated project does not compile:
+      #
+      #   ** (KeyError) key :active_account_id not found
+      #       expanding struct: <App>.Users.Scope.__struct__/1
+      #
+      # `~> 0.1.0` means `< 0.2.0`, so it could never have resolved the fix
+      # however long it sat on hex.
+      {:code_my_spec_generators, "~> 0.2", only: :dev}
     ]
   end
 
