@@ -94,6 +94,19 @@ defmodule <%= @app_module %>.MixProject do
       {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.14.1", only: [:dev, :test], runtime: false},
       {:sexy_spex, "~> 0.2", only: [:dev, :test]},
+      # For the support widget's client, which `cms_gen.support_widget` writes
+      # with `use Slipstream`. That generator only *prints* an instruction to
+      # add this — the same shape as the Scope edit that used to be printed
+      # too — so a project that ran the standard generator chain and was then
+      # built failed inside the container with
+      #
+      #   ** (CompileError) cannot compile module <App>.CodeMySpec.WidgetClient
+      #       expanding macro: Kernel.use/1
+      #
+      # It belongs in the generator, which should add what its own output
+      # needs. Here until that ships, because every generated project runs
+      # that generator.
+      {:slipstream, "~> 1.1"},
       # `~> 0.2`, not `~> 0.1.0`. 0.2.0 is the release where the generators
       # apply the two edits they previously only *printed* instructions for —
       # without it `cms_gen.accounts` leaves `Users.Scope` without
