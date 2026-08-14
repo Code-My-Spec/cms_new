@@ -41,6 +41,11 @@ defmodule <%= @web_namespace %>.Router do
     pipe_through :api
 
     post "/verify/widget", VerifyController, :widget
+
+    # Down by construction, so a monitor can be proven to notice something
+    # without anything real being broken. Unauthenticated: a monitor will not
+    # carry a credential, and a constant reveals nothing.
+    get "/verify/always-failing", VerifyController, :always_failing
   end<%= if @html do %>
 
   scope "/", <%= @web_namespace %> do

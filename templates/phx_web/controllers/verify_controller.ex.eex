@@ -36,7 +36,31 @@ defmodule <%= @web_namespace %>.VerifyController do
 
   require Logger
 
-  plug :authenticate
+  plug :authenticate when action != :always_failing
+
+  @doc """
+  Always 503. A monitor pointed here is a monitor proving it notices.
+
+  Uptime monitoring is asserted far more often than it is tested, and the way
+  it fails is silent: a monitor watching the wrong host, or with no working
+  notification target, looks exactly like a monitor watching a healthy site.
+  The only way to tell them apart is to give it something that is genuinely
+  down and see whether anyone is told.
+
+  Doing that by breaking the application would be the obvious approach and the
+  wrong one — it takes real traffic with it, and an endpoint that could do it
+  would make the deploy key a way to cause an outage. This route is down
+  *by construction* and affects nothing else: no state, no dependency, no
+  bearing on `/health` or on whether traffic swaps.
+
+  Unauthenticated on purpose. A monitor will not carry the deploy key, and this
+  reveals nothing — it is a constant.
+  """
+  def always_failing(conn, _params) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(%{status: "down", by: "design", hint: "a monitor pointed here should alert"})
+  end
 
   @doc """
   Send a message through the support widget's own client.
