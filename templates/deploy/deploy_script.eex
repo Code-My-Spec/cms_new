@@ -146,7 +146,24 @@ DEFERRED_MIGRATE=""
 if [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; then
   MIGRATE_LOG="$(mktemp)"
 
-  if kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate" \
+  # `-e`, so the migration carries the key rather than reading the host's copy.
+  #
+  # `kamal app exec` starts a one-off container that loads
+  # `.kamal/apps/<app>/env/roles/web.env` from the host, and kamal writes that
+  # file only when it *boots* a container. So the migration ran against the
+  # environment of the last successful boot, not the one being deployed — and
+  # any secret that changed since then was stale exactly when it mattered.
+  #
+  # Rotating SOPS_AGE_KEY deadlocked on this: the new deploy re-encrypts the env
+  # to the new key, the migration reads the old key off the host, sops reports
+  # "no identity matched any of the recipients" against a file whose recipient
+  # is correct, and the deploy that would have replaced the host's copy is the
+  # one that cannot finish. Observed on a drill box — the delivered key derived
+  # to age1samcfel… while the file wanted age1vcf3lc4….
+  #
+  # The value is already in this shell (step 3 above insists on it), so handing
+  # it to the container removes the dependency on host state entirely.
+  if kamal app exec --version="$VERSION" -c "$CONFIG" -e "SOPS_AGE_KEY:$SOPS_AGE_KEY" "/app/bin/migrate" \
       >"$MIGRATE_LOG" 2>&1; then
     cat "$MIGRATE_LOG"
     echo "migrated=$VERSION"
@@ -184,7 +201,7 @@ if [ "$PHASE" = "all" ] || [ "$PHASE" = "swap" ]; then
   # the host. The healthcheck has already passed, so this runs against a
   # container that is up.
   if [ -n "$DEFERRED_MIGRATE" ] && { [ "$PHASE" = "all" ] || [ "$PHASE" = "migrate" ]; }; then
-    kamal app exec --version="$VERSION" -c "$CONFIG" "/app/bin/migrate"
+    kamal app exec --version="$VERSION" -c "$CONFIG" -e "SOPS_AGE_KEY:$SOPS_AGE_KEY" "/app/bin/migrate"
     echo "migrated=$VERSION"
   fi
   echo
