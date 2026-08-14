@@ -164,6 +164,26 @@ libpq_url() {
   esac
 }
 
+# Exact row count across every user table.
+#
+# `SUM(n_live_tup)` was the old answer and it is an estimate: pg_stat_user_tables
+# is populated by ANALYZE, so a table restored a second ago reports zero while
+# holding every row. A proof built on it says "that is a file, not a backup"
+# about a backup that is fine.
+#
+# COUNT(*) per table via query_to_xml, because the tables are not known ahead of
+# time and this is the one way to fold a dynamic count into a single scalar
+# without a procedural language.
+count_rows() {
+  pg psql -tA "$1" -c "SELECT COALESCE(SUM(cnt), 0) FROM (
+      SELECT (xpath('/row/c/text()',
+                query_to_xml(format('SELECT count(*) AS c FROM %I.%I', schemaname, tablename),
+                             false, true, '')))[1]::text::bigint AS cnt
+      FROM pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+    ) counts;" | tr -d "[:space:]"
+}
+
 cmd_dump() {
   local env_name="${1:-prod}"
   load_env "$env_name"
@@ -185,6 +205,10 @@ cmd_dump() {
 
   echo "key=$key"
   echo "bytes=$(wc -c < "$TMPFILE" | tr -d ' ')"
+  # What went in, so the restore has something to be equal to. A backup of an
+  # empty database that restores empty is a correct backup; only a comparison
+  # can say so.
+  echo "rows=$(count_rows "$(libpq_url "$DATABASE_URL")")"
 }
 
 cmd_restore() {
@@ -212,10 +236,7 @@ cmd_restore() {
   # data come back", and a restore that recreates empty tables answers it with
   # a zero — which is the failure worth catching.
   local rows
-  rows=$(pg psql -tA "$target_url" -c "
-    SELECT COALESCE(SUM(n_live_tup), 0)
-    FROM pg_stat_user_tables;
-  ")
+  rows=$(count_rows "$target_url")
 
   echo "rows=${rows:-0}"
   echo "target=$target"
