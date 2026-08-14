@@ -31,6 +31,16 @@ erl_crash.dump
 # Ignore digested assets cache.
 /priv/static/cache_manifest.json
 
+# Compiler diagnostics, written into the project root on every compile.
+#
+# Not ignoring it makes the tree dirty as a side effect of building, and
+# `bin/deploy` refuses a dirty tree — correctly, since the image is versioned by
+# commit sha and deploying with uncommitted changes ships something no commit
+# describes. So a plain `mix compile` before a deploy blocked the deploy, with a
+# message about the working tree that says nothing about where the file came
+# from.
+/diagnostics.jsonl
+
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
 /assets/node_modules/

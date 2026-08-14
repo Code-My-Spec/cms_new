@@ -25,6 +25,22 @@ defmodule <%= @web_namespace %>.Router do
   # completes.
   scope "/", <%= @web_namespace %> do
     get "/health", HealthController, :show
+  end
+
+  # Ask an integration to prove itself, on demand.
+  #
+  # Separate from `/health` deliberately, and for that route's own stated
+  # reason: the proxy gates the traffic swap on it, so it stays shallow. These
+  # actions reach a dependency for real — the widget's socket, its credential,
+  # its origin — which is exactly what must not decide whether traffic moves.
+  #
+  # Under `/_cms` so it cannot collide with the application's own routes, and
+  # behind the project's deploy key, which this app already holds. Each action
+  # can only make its integration *speak*; none of them can take the app down.
+  scope "/_cms", <%= @web_namespace %> do
+    pipe_through :api
+
+    post "/verify/widget", VerifyController, :widget
   end<%= if @html do %>
 
   scope "/", <%= @web_namespace %> do

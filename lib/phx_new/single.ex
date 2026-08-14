@@ -25,6 +25,8 @@ defmodule Phx.New.Single do
      # the traffic swap on it either way.
      "phx_web/controllers/health_controller.ex.eex":
        "lib/:lib_web_name/controllers/health_controller.ex",
+     "phx_web/controllers/verify_controller.ex.eex":
+       "lib/:lib_web_name/controllers/verify_controller.ex",
      "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
      "phx_web/router.ex.eex": "lib/:lib_web_name/router.ex",
      "phx_web/telemetry.ex.eex": "lib/:lib_web_name/telemetry.ex",
