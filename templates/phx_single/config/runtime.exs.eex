@@ -135,3 +135,10 @@ if config_env() == :prod do
   #
   # See https://swoosh.hexdocs.pm/Swoosh.html#module-installation for details.<% end %>
 end
+
+# The Resend inbound-mail webhook's Svix signing secret. Read at runtime, and
+# unconditionally rather than only under `:prod`, so dev/test simply see
+# `nil` and `ResendWebhookController` skips verification instead of raising.
+# Unset until inbound mail setup mints one and writes it to the encrypted
+# env — the controller degrades gracefully until then.
+config :<%= @app_name %>, :resend_webhook_secret, System.get_env("RESEND_WEBHOOK_SECRET")

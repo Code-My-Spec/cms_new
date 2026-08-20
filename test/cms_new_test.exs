@@ -251,8 +251,11 @@ defmodule Mix.Tasks.Cms.NewTest do
       end)
 
       # And the proxy probes over plain HTTP, so force_ssl must not redirect it.
+      # Keyword form (`paths:`/`hosts:`), not a flat string list — 2be1a6c: a
+      # flat list is not a shape Plug.SSL reads, so it excludes nothing and
+      # the probe gets redirected instead.
       assert_file("cms_blog/config/runtime.exs", fn file ->
-        assert file =~ ~s|exclude: ["/health"|
+        assert file =~ ~s|exclude: [paths: ["/health"]|
       end)
     end)
   end

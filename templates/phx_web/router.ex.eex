@@ -46,6 +46,21 @@ defmodule <%= @web_namespace %>.Router do
     # without anything real being broken. Unauthenticated: a monitor will not
     # carry a credential, and a constant reveals nothing.
     get "/verify/always-failing", VerifyController, :always_failing
+  end
+
+  # Inbound mail webhook (Resend Receiving API). Present from generation,
+  # not installed alongside inbound mail setup: a domain whose MX already
+  # points here before that setup has run should get a real answer rather
+  # than a 404, and `ResendWebhookController` degrades gracefully when
+  # `RESEND_WEBHOOK_SECRET` isn't configured yet.
+  #
+  # Unauthenticated like `/health` — Resend cannot carry this app's deploy
+  # key — and outside `/_cms` because Resend, not setup, decides the path.
+  # The Svix signature is what proves a request is genuinely from Resend.
+  scope "/webhooks", <%= @web_namespace %> do
+    pipe_through :api
+
+    post "/resend", ResendWebhookController, :inbound
   end<%= if @html do %>
 
   scope "/", <%= @web_namespace %> do

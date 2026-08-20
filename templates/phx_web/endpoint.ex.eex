@@ -62,6 +62,11 @@ defmodule <%= @endpoint_module %> do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
+    # The Resend webhook verifies a signature over the exact bytes sent, and
+    # Plug.Parsers has already consumed them by the time a controller runs.
+    # `CacheBodyReader` stashes the raw body for `/webhooks/` requests only,
+    # so it costs nothing on the routes that don't need it.
+    body_reader: {<%= @web_namespace %>.CacheBodyReader, :read_body, []},
     json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride

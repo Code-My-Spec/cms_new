@@ -27,6 +27,12 @@ defmodule Phx.New.Single do
        "lib/:lib_web_name/controllers/health_controller.ex",
      "phx_web/controllers/verify_controller.ex.eex":
        "lib/:lib_web_name/controllers/verify_controller.ex",
+     # Ships regardless of whether inbound mail setup has run yet, so a
+     # domain pointed here early gets a real (if unverified) answer instead
+     # of a 404.
+     "phx_web/controllers/resend_webhook_controller.ex.eex":
+       "lib/:lib_web_name/controllers/resend_webhook_controller.ex",
+     "phx_web/cache_body_reader.ex.eex": "lib/:lib_web_name/cache_body_reader.ex",
      "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
      "phx_web/router.ex.eex": "lib/:lib_web_name/router.ex",
      "phx_web/telemetry.ex.eex": "lib/:lib_web_name/telemetry.ex",
