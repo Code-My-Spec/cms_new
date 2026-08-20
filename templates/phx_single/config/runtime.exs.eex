@@ -75,7 +75,15 @@ if config_env() == :prod do
     # health path, force_ssl answers that probe with a 301, the proxy reads
     # the redirect as an unhealthy container, and the traffic swap never
     # completes — a deploy that fails for a reason unrelated to the app.
-    force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: ["/health", "localhost", "127.0.0.1"]]
+    # Keyword form, because that is the only one Plug.SSL reads: a flat list of
+    # strings is not `[hosts: ...]`, `[paths: ...]` or `[conn: ...]`, so it
+    # excludes nothing and the probe still gets its 301. Identical to
+    # config/prod.exs, and it has to be — Phoenix marks `:force_ssl`
+    # compile-time, so a runtime value that differs aborts the boot.
+    force_ssl: [
+      rewrite_on: [:x_forwarded_proto],
+      exclude: [paths: ["/health"], hosts: ["localhost", "127.0.0.1"]]
+    ]
 
   # ## SSL Support
   #

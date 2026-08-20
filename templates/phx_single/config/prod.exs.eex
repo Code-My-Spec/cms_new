@@ -22,8 +22,22 @@ config :<%= @web_app_name %>, <%= @endpoint_module %>, cache_static_manifest: "p
 # Which arrives as a container that never becomes healthy, the proxy waiting
 # out its deploy timeout, and a deploy reporting a failed traffic swap. Nothing
 # in that names the config, and every generated app hit it.
+#
+# `exclude` in keyword form, because that is the only form Plug.SSL reads. A
+# flat list of strings is not `[hosts: ...]`, `[paths: ...]` or `[conn: ...]`,
+# so nothing in it excludes anything — and the health path is the one that
+# matters: the proxy probes the app port directly over plain HTTP with no
+# forwarded-proto header, so an unexcluded `/health` answers 301, the proxy
+# reads a redirect as an unhealthy container, and the traffic swap never
+# completes. Observed exactly that:
+#
+#   Plug.SSL is redirecting GET /health to https://... with status 301
+#   Error: target failed to become healthy within configured timeout (30s)
 config :<%= @web_app_name %>, <%= @endpoint_module %>,
-  force_ssl: [rewrite_on: [:x_forwarded_proto], exclude: ["/health", "localhost", "127.0.0.1"]]<%= if @mailer do %>
+  force_ssl: [
+    rewrite_on: [:x_forwarded_proto],
+    exclude: [paths: ["/health"], hosts: ["localhost", "127.0.0.1"]]
+  ]<%= if @mailer do %>
 
 # Configure Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req

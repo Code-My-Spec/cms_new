@@ -24,6 +24,11 @@ permissions:
   contents: read
   packages: write
 
+# <GITHUB_OWNER> is deliberately literal, not an EEx tag: no repository exists
+# yet at generation time to have an owner. CodeMySpec's :repository
+# provisioning step substitutes it once the real repository (or org) is
+# known — see CodeMySpec.Provisioning.Repository. A project generated outside
+# that pipeline should replace it with its own GitHub username or org by hand.
 env:
   IMAGE: ghcr.io/<GITHUB_OWNER>/<%= @app_name %>
 
