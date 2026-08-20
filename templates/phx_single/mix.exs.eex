@@ -89,8 +89,28 @@ defmodule <%= @app_module %>.MixProject do
       # CodeMySpec harness. `:boundary` and `:client_utils` supply the
       # `:boundary` and `:diagnostics` compilers declared in compilers/1,
       # so they are runtime-visible in every environment, not dev-only.
+      #
+      # `>= 0.0.0` on client_utils: whatever is newest when this project is
+      # generated. Not laziness — a version pinned in a generator template is a
+      # number nobody looks at again, and this one went stale in a way that
+      # mattered. It said `~> 0.1.19` while hex sat at 0.1.28 and two fixes a
+      # generated app needs waited on the master branch: `ANTHROPIC_BASE_URL`
+      # becoming opt-in (carrying it points every model turn at a proxy that
+      # only understands `/v1/messages`, silently breaking every other Anthropic
+      # surface Claude Code needs), and `mix harness.onboard` no longer stamping
+      # `"project_id" => nil` over a `.cms_harness.json` a host had filled in.
+      #
+      # `mix.lock` still pins the moment it resolves, so this means "newest at
+      # generation", plus whenever someone runs `mix deps.update client_utils`.
+      # No requirement can mean more than that — the lock exists to stop a build
+      # changing under you.
+      #
+      # The trade, stated: a future breaking release is taken without anyone
+      # deciding to. That is accepted because this library and this generator
+      # ship together, and a generated project tracking the harness it was made
+      # for is the point. Pin it if that ever stops being true.
       {:boundary, "~> 0.10.4"},
-      {:client_utils, "~> 0.1.19"},
+      {:client_utils, ">= 0.0.0"},
       {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.14.1", only: [:dev, :test], runtime: false},
       {:sexy_spex, "~> 0.2", only: [:dev, :test]},
