@@ -153,7 +153,8 @@ defmodule <%= @app_module %>.MixProject do
       setup: ["deps.get"<%= if @ecto do %>, "ecto.setup"<% end %><%= if @asset_builders != [] do %>, "assets.setup", "assets.build"<% end %>]<%= if @ecto do %>,
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]<% end %><%= if @asset_builders != [] do %>,
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      spex: ["ecto.create --quiet", "ecto.migrate --quiet", "spex"]<% end %><%= if @asset_builders != [] do %>,
       "assets.setup": <%= inspect Enum.map(@asset_builders, &"#{&1}.install --if-missing") %>,
       "assets.build": <%= inspect ["compile" | Enum.map(@asset_builders, &"#{&1} #{@app_name}")] %>,
       "assets.deploy": [
