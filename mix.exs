@@ -81,7 +81,13 @@ defmodule Phx.New.MixProject do
 
   def deps do
     [
-      {:ex_doc, "~> 0.24", only: :docs}
+      # `:dev`, not upstream's `:docs`. `mix hex.publish` builds docs in whatever
+      # environment it runs in, so scoping ex_doc to a `:docs` env means the
+      # plain command fails with "the docs task is unavailable" and only
+      # `MIX_ENV=docs mix hex.publish` works. Upstream publishes from CI where
+      # that env is set for them; here it is one more thing to remember, and the
+      # error names ex_doc rather than the environment it actually wanted.
+      {:ex_doc, "~> 0.24", only: :dev, runtime: false}
     ]
   end
 
