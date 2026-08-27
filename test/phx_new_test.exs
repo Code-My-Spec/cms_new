@@ -100,6 +100,22 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ "enabled: config[:tunnel_id] not in [nil, \"\"]",
                "the tunnel is unconditional, so an app with no preview boots dialling " <>
                  "one that does not exist"
+
+        # Order, not just presence. The tunnel reconfigures the endpoint so URL
+        # helpers generate the public address, and that reads a config table the
+        # endpoint does not create until it has started. Placed first, every
+        # generated app with a preview crashes on boot inside
+        # `Phoenix.Config.config_change/3` — an error naming neither the tunnel
+        # nor the ordering.
+        #
+        # Shipped that way in 1.8.9 and found by an agent wiring it into a real
+        # application, not here.
+        [_, before_tunnel] =
+          Regex.run(~r/children = \[(.*?)ClientUtils\.CloudflareTunnel/s, file)
+
+        assert before_tunnel =~ "PhxBlogWeb.Endpoint",
+               "the tunnel starts before the endpoint, so a generated app with a " <>
+                 "preview configured cannot boot"
       end)
 
       assert_file("phx_blog/config/runtime.exs", fn file ->

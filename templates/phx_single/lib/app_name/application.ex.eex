@@ -30,9 +30,18 @@ defmodule <%= @web_namespace %>.Application do
       # state — most apps run for a long time before anyone previews them, and one
       # that dialled a tunnel that does not exist would be broken for the common
       # case to be ready for the rare one.
-      {ClientUtils.CloudflareTunnel, preview_tunnel(<%= inspect(String.to_atom(@app_name)) %>)},
       # Start to serve requests, typically the last entry
-      <%= @endpoint_module %>
+      <%= @endpoint_module %>,
+      # After the endpoint, not before. The tunnel reconfigures the endpoint so
+      # URL helpers generate the public address, which reads the endpoint's own
+      # config table — and that table does not exist until the endpoint has
+      # started. Placed before it, the app crashes on boot inside
+      # `Phoenix.Config.config_change/3`, which names neither the tunnel nor the
+      # ordering.
+      #
+      # Last is also correct on its own terms: nothing should be reachable from
+      # outside before the thing serving it is up.
+      {ClientUtils.CloudflareTunnel, preview_tunnel(<%= inspect(String.to_atom(@app_name)) %>)}
     ]
 
     # See https://elixir.hexdocs.pm/Supervisor.html

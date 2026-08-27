@@ -19,7 +19,7 @@ defmodule Phx.New.MixProject do
   # fact now, so the two can move independently: a patch of ours bumps the
   # version below and leaves the fork point alone, and taking a new upstream
   # tree onto `vendor` bumps both.
-  @version "1.8.9"
+  @version "1.8.10"
 
   # Upstream fork point: Phoenix installer 1.8.8, which is what `vendor` holds.
   # A comment rather than an attribute because nothing reads it — it is recorded
