@@ -100,10 +100,43 @@ defmodule Phx.New.MixProject do
     ]
   end
 
+  # Refresh the vendored usage rules from a sibling checkout, when there is one.
+  #
+  # Upstream regenerates these from its own `usage-rules` sibling on every
+  # publish. This fork has no such sibling — upstream gitignores the copied
+  # directory, so ours is force-added and tracked, and the tracked copy is the
+  # source of truth here.
+  #
+  # It was an unconditional `cp_r!`, which meant `mix hex.publish` died with a
+  # `File.CopyError` about a directory that is not supposed to exist, before
+  # publishing began. The failure named the missing sibling rather than the
+  # convention, so it read like a broken checkout instead of an inherited step
+  # that does not apply.
+  #
+  # Says which it did, because "refreshed from upstream" and "shipped what is
+  # committed" are different claims about what is in the package, and silently
+  # doing the second while somebody believes the first is how stale rules ship.
   defp copy_agents_md(_) do
-    File.cp_r!(
-      Path.expand("../usage-rules", __DIR__),
-      Path.expand("./templates/phoenix-usage-rules", __DIR__)
-    )
+    source = Path.expand("../usage-rules", __DIR__)
+    target = Path.expand("./templates/phoenix-usage-rules", __DIR__)
+
+    cond do
+      File.dir?(source) ->
+        File.cp_r!(source, target)
+        Mix.shell().info("usage rules: refreshed from #{source}")
+
+      File.dir?(target) ->
+        Mix.shell().info("usage rules: shipping the committed copy (no sibling checkout)")
+
+      true ->
+        Mix.raise("""
+        No usage rules to ship.
+
+        #{target} does not exist and there is no sibling checkout at #{source}
+        to build it from. The generated app expects these, so publishing
+        without them would ship a generator that produces projects missing
+        their usage rules.
+        """)
+    end
   end
 end
