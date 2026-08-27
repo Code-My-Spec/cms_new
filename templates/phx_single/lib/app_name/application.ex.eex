@@ -21,6 +21,16 @@ defmodule <%= @web_namespace %>.Application do
       {Phoenix.PubSub, name: <%= @app_module %>.PubSub},
       # Start a worker by calling: <%= @app_module %>.Worker.start_link(arg)
       # {<%= @app_module %>.Worker, arg},
+      # Carries this app's preview to the address CodeMySpec gave it, by dialling
+      # out to Cloudflare rather than waiting to be dialled. That is what lets a
+      # preview work from a laptop behind a router, on a network CodeMySpec has
+      # never heard of.
+      #
+      # `enabled: false` until onboarding records a tunnel, which is the ordinary
+      # state — most apps run for a long time before anyone previews them, and one
+      # that dialled a tunnel that does not exist would be broken for the common
+      # case to be ready for the rare one.
+      {ClientUtils.CloudflareTunnel, preview_tunnel(<%= inspect(String.to_atom(@app_name)) %>)},
       # Start to serve requests, typically the last entry
       <%= @endpoint_module %>
     ]
@@ -29,6 +39,25 @@ defmodule <%= @web_namespace %>.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: <%= @web_namespace %>.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # The preview tunnel's options, or `enabled: false` when there is nothing to
+  # carry. Read here rather than assembled in config, because the endpoint and
+  # the origin it fronts are known at this point and the tunnel needs both.
+  defp preview_tunnel(otp_app) do
+    config = Application.get_env(otp_app, :preview, [])
+
+    [
+      enabled: config[:tunnel_id] not in [nil, ""],
+      mode: :named,
+      hostname: config[:hostname],
+      tunnel_id: config[:tunnel_id],
+      account_tag: config[:account_tag],
+      tunnel_secret: config[:tunnel_secret],
+      origin_url: config[:origin_url] || "http://127.0.0.1:4000",
+      endpoint: <%= @endpoint_module %>,
+      otp_app: otp_app
+    ]
   end
 
   # Tell Phoenix to update the endpoint configuration

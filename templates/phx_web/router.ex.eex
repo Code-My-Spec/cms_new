@@ -8,6 +8,14 @@ defmodule <%= @web_namespace %>.Router do
     plug :put_root_layout, html: {<%= @web_namespace %>.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    # Lets the CodeMySpec preview pane embed this app, and nothing else. A no-op
+    # until a preview is configured, so having it here is not itself a loosening.
+    #
+    # After :put_secure_browser_headers deliberately. That sets
+    # `frame-ancestors 'self'`, which refuses the pane — and refuses it
+    # silently: the iframe looks healthy and renders nothing, which reads as
+    # this application being broken rather than as a header saying no.
+    plug ClientUtils.PreviewFraming, otp_app: <%= inspect(String.to_atom(@app_name)) %>
   end<% end %>
 
   pipeline :api do
