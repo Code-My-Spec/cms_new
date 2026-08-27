@@ -77,6 +77,37 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ ~r/^\s+ip: {0, 0, 0, 0, 0, 0, 0, 0}$/m
       end)
 
+      # CodeMySpec, story 968 criterion 2968: a generated app ships able to
+      # carry its own preview, and runs nothing until it is given one.
+      #
+      # Both halves matter and they pull against each other. Shipping the tunnel
+      # is what makes a preview arrive without anybody editing the app's source
+      # afterwards — the person this is for is non-technical, and "add this child
+      # spec to your supervision tree" is not a step they can take. But most
+      # generated apps are run long before they are ever previewed, and one that
+      # dialled a tunnel that does not exist would be broken for the ordinary
+      # case in order to be ready for the rare one.
+      #
+      # Tested here rather than in CodeMySpec's spex suite because this is what
+      # the generator writes, and `mix cms.new` is not a task there. A spec over
+      # there asserting on this template's contents would be green and prove
+      # nothing.
+      assert_file("phx_blog/lib/phx_blog_web/application.ex", fn file ->
+        assert file =~ "ClientUtils.CloudflareTunnel",
+               "the generated app cannot carry a preview, so a provisioned one never " <>
+                 "reaches it and the only remedy is editing the app's source"
+
+        assert file =~ "enabled: config[:tunnel_id] not in [nil, \"\"]",
+               "the tunnel is unconditional, so an app with no preview boots dialling " <>
+                 "one that does not exist"
+      end)
+
+      assert_file("phx_blog/config/runtime.exs", fn file ->
+        assert file =~ "ClientUtils.Harness.Preview.config(",
+               "nothing reads the preview, so the tunnel is configured with nothing " <>
+                 "whatever onboarding recorded"
+      end)
+
       # CodeMySpec: Application moved to the web namespace (supervises Repo AND Endpoint)
       assert_file("phx_blog/lib/phx_blog_web/application.ex", ~r/defmodule PhxBlogWeb.Application do/)
       assert_file("phx_blog/lib/phx_blog.ex", ~r/defmodule PhxBlog do/)
@@ -133,6 +164,27 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ "defmodule PhxBlogWeb.Router"
         assert file =~ "live_dashboard"
         assert file =~ "import Phoenix.LiveDashboard.Router"
+
+        # Story 968. Phoenix's own `put_secure_browser_headers` sends
+        # `frame-ancestors 'self'`, which refuses the preview pane — and refuses
+        # it silently: the iframe looks healthy and renders nothing, so it reads
+        # as this app being broken rather than as a header saying no.
+        assert file =~ "plug ClientUtils.PreviewFraming, otp_app: :phx_blog",
+               "the generated app never says who may frame it, so the pane is " <>
+                 "refused by the browser with nothing anywhere explaining why"
+
+        # Order, not just presence. The plug replaces that header's value, so
+        # running before the secure default would have the default write over it
+        # — and the symptom is a blank frame that depends on pipeline order,
+        # which is the worst kind to diagnose backwards.
+        [_, secure, framing] =
+          Regex.run(
+            ~r/(plug :put_secure_browser_headers).*?(plug ClientUtils\.PreviewFraming)/s,
+            file
+          )
+
+        assert secure && framing,
+               "the framing plug does not follow put_secure_browser_headers"
       end)
 
       assert_file("phx_blog/lib/phx_blog_web/endpoint.ex", fn file ->
