@@ -10,7 +10,21 @@ end
 defmodule Phx.New.MixProject do
   use Mix.Project
 
-  @version "1.8.8"
+  # Ours, and it bumps on our schedule — this is published to hex, so the
+  # version has to move when what we ship moves.
+  #
+  # It started life equal to the Phoenix installer version this forks, which
+  # made it read like a statement about upstream and left nothing to increment
+  # without lying about which Phoenix it tracks. `@phoenix_version` carries that
+  # fact now, so the two can move independently: a patch of ours bumps the
+  # version below and leaves the fork point alone, and taking a new upstream
+  # tree onto `vendor` bumps both.
+  @version "1.8.9"
+
+  # Upstream fork point: Phoenix installer 1.8.8, which is what `vendor` holds.
+  # A comment rather than an attribute because nothing reads it — it is recorded
+  # so the fork point survives, since the rebase workflow depends on knowing
+  # which tree the squashed patch commit sits on top of.
   @scm_url "https://github.com/Code-My-Spec/cms_new"
 
   # If the elixir requirement is updated, we need to update:
