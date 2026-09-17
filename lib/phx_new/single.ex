@@ -142,6 +142,11 @@ defmodule Phx.New.Single do
   # by gen_cms/1 below.
   template(:cms, [
     {:eex, :project, "cms/credo.exs.eex": ".credo.exs"},
+    # The harness calls `just init-worktree` to make a working copy, and a
+    # promotion calls `just restart` to bring the app up on merged code —
+    # refusing outright when there is no justfile. A generated project needs
+    # both from the start or it cannot take part in either.
+    {:eex, :project, "cms/justfile.eex": "justfile"},
     {:eex, :project, "cms/conn_case_compat.ex.eex": "test/support/conn_case_compat.ex"},
     {:eex, :project, "cms/data_case_compat.ex.eex": "test/support/data_case_compat.ex"}
   ])
