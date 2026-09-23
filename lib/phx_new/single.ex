@@ -27,6 +27,11 @@ defmodule Phx.New.Single do
        "lib/:lib_web_name/controllers/health_controller.ex",
      "phx_web/controllers/verify_controller.ex.eex":
        "lib/:lib_web_name/controllers/verify_controller.ex",
+     # Mints the token the preview pane's own frame redeems to sign in without
+     # ever asking Google or GitHub to render inside an iframe — see the
+     # controller's own moduledoc for why the deploy key alone cannot do this.
+     "phx_web/controllers/preview_login_controller.ex.eex":
+       "lib/:lib_web_name/controllers/preview_login_controller.ex",
      # Ships regardless of whether inbound mail setup has run yet, so a
      # domain pointed here early gets a real (if unverified) answer instead
      # of a 404.
