@@ -481,15 +481,66 @@ defmodule Phx.New.Generator do
       #
       # In a linked worktree `.git` is a file pointing at the real git dir rather
       # than a directory. That is the whole test. The primary checkout keeps the
-      # bare name, and an explicit MIX_TEST_PARTITION still wins.
+      # bare name.
       #
       # These databases are disposable and nothing sweeps them: `mix ecto.drop`
       # in a worktree you are finished with.
+      #
+      # The recorded name wins over everything except the analyzer's own
+      # sub-partition. `mix cms.harness.onboard` writes it into
+      # `.claude/settings.local.json`, and that file is the answer — read here
+      # rather than taken from the environment, because the variable only
+      # reaches a process Claude Code exported it into. Anything else that
+      # runs the suite (an analyzer, a script, a shell you opened yourself) got
+      # a different database from the same checkout, and the two disagreed
+      # about the schema without either of them being wrong.
+      #
+      # Read as text rather than through a library: config runs before deps are
+      # loaded, so there is nothing to call yet.
+      recorded_partition =
+        with {:ok, contents} <-
+               File.read(Path.join(File.cwd!(), ".claude/settings.local.json")),
+             [_, value] <-
+               Regex.run(~r/"MIX_TEST_PARTITION"\\s*:\\s*"([^"]+)"/, contents) do
+          value
+        else
+          _ -> nil
+        end
+
+      requested_partition = System.get_env("MIX_TEST_PARTITION")
+
+      # The one environment value allowed to win over the recorded one. A
+      # harness analyzer gives its exunit and spex sweeps their own database by
+      # appending a letter to this copy's own recorded partition (an "a" for
+      # exunit, an "s" for spex), and MIX_TEST_PARTITION is the only channel it
+      # has to say so. Recorded-first, full stop, silently drops that suffix
+      # and collapses both sweeps and an interactive mix test onto one
+      # database — a sweep truncating under the suite still using it.
+      #
+      # Narrow on purpose: not "an environment value" but "the recorded value
+      # plus one suffix" — a name that can only describe *this* working copy.
+      # A value inherited from another worktree cannot match, and still loses.
+      own_sub_partition? =
+        is_binary(recorded_partition) and is_binary(requested_partition) and
+          requested_partition in [recorded_partition <> "a", recorded_partition <> "s"]
+
       partition =
-        System.get_env("MIX_TEST_PARTITION") ||
-          if File.regular?(Path.join(File.cwd!(), ".git")),
-            do: "_" <> Path.basename(File.cwd!()),
-            else: ""
+        cond do
+          own_sub_partition? ->
+            requested_partition
+
+          recorded_partition ->
+            recorded_partition
+
+          requested_partition ->
+            requested_partition
+
+          File.regular?(Path.join(File.cwd!(), ".git")) ->
+            "_" <> Path.basename(File.cwd!())
+
+          true ->
+            ""
+        end
 
       """,
       test: [
