@@ -2,8 +2,21 @@
 # while developing. Both names matter: our modules are still namespaced
 # `Phx.New.*` (deliberately — it keeps the upstream rebase clean), so a
 # stock phx_new archive would clash with them just as an older cms_new would.
+#
+# The version suffix is optional in the pattern, and that is the whole point.
+# `mix archive.install cms_new.ez` — an unversioned artifact, which is what the
+# `cms_new.ez` sitting in this repo is — installs to `archives/cms_new/`, and a
+# pattern requiring `-<version>` does not match it. So the guard was inert
+# against precisely the archive that shadowed this tree: a 17-day-old build kept
+# generating apps from its own baked-in templates while `_build` held the edit,
+# from inside this checkout, with `mix compile --force` reporting success.
+#
+# It hid well. `Mix.Tasks.Compile.All` prunes archives off the path, so anything
+# that compiles first — `iex -S mix`, `mix run` — honestly reports `_build`;
+# `mix cms.new` does not compile, so the archive stays. And a `.beam` grep
+# proves nothing either way, because literal tables are zlib-compressed.
 for path <- :code.get_path(),
-    Regex.match?(~r/(cms_new|phx_new)-[\w\.\-]+\/ebin$/, List.to_string(path)) do
+    Regex.match?(~r/(cms_new|phx_new)(-[\w\.\-]+)?\/ebin$/, List.to_string(path)) do
   Code.delete_path(path)
 end
 
