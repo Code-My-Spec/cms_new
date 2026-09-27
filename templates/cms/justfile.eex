@@ -33,6 +33,15 @@ init-worktree name target:
       git -C "{{target}}" submodule update --init --recursive
     fi
 
+    # Dev/test secrets, committed sops-encrypted. The CodeMySpec harness puts
+    # the project's age key in ~/.config/sops/age/keys.txt when it serves it.
+    for e in dev test; do
+      if [ -f "envs/$e.enc.env" ]; then
+        echo "→ .env.$e"
+        sops -d --input-type dotenv --output-type dotenv "envs/$e.enc.env" > "{{target}}/.env.$e"
+      fi
+    done
+
     echo "→ deps"
     cd "{{target}}" && elixir -S mix deps.get
 
