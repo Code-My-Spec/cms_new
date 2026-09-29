@@ -45,6 +45,45 @@ init-worktree name target:
     echo "→ deps"
     cd "{{target}}" && elixir -S mix deps.get
 
+# Bring this working copy's own app up on its own port and database — story
+# 1108. The harness (`CmsHarness.AppInstance`) runs exactly this, once per
+# copy, with `PORT` and `DATABASE_NAME` (and, when relevant, `CMS_MAIN_COPY` /
+# `CMS_TUNNEL_HELD_BY_HARNESS`) already set as environment variables rather
+# than passed as arguments, so `config/dev.exs` and `config/runtime.exs` read
+# them the same way whether this ran under the harness or by hand.
+#
+# `mix loadpaths` is the cheap check: it fails on a checkout with no `deps/`
+# or a `_build` from a different Elixir/OTP, and both need
+# `deps.get`/`deps.compile` before anything else here can run. A fresh
+# working copy does not inherit a compiled `deps/` from the checkout it came
+# from — `init-worktree` above copies `mix.lock`, not the compiled tree.
+#
+# `assets.setup` runs only when `assets/package.json` exists and
+# `assets/node_modules` does not — most generated apps have no npm
+# dependencies at all, and re-running it on every start would cost real time
+# for nothing. Missing it silently is the actual defect this guards against:
+# a copy can come up "serving" (the port answers) with every JS hook dead and
+# nothing anywhere saying so.
+serve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    : "${PORT:?PORT must be set}"
+    : "${DATABASE_NAME:?DATABASE_NAME must be set}"
+
+    if ! MIX_ENV=dev mix loadpaths > /dev/null 2>&1; then
+      MIX_ENV=dev mix deps.get
+      MIX_ENV=dev mix deps.compile
+    fi
+
+    if [ -f assets/package.json ] && [ ! -d assets/node_modules ]; then
+      MIX_ENV=dev mix assets.setup
+    fi
+
+    MIX_ENV=dev mix ecto.create
+    MIX_ENV=dev mix ecto.migrate
+    exec env MIX_ENV=dev elixir -S mix phx.server
+
 # Bring the application back up on the code that is now checked out.
 #
 # A promotion runs exactly this, from the checkout it merged into, and reads the

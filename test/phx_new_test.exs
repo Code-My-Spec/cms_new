@@ -138,6 +138,33 @@ defmodule Mix.Tasks.Phx.NewTest do
                  "specifically to avoid"
       end)
 
+      # CodeMySpec, 2026-09-29: `serve` is what `CmsHarness.AppInstance` runs
+      # for every working copy — a fresh one's `deps/` and (when applicable)
+      # `assets/node_modules` are not carried over from the checkout it came
+      # from, so this has to be able to bring itself up from nothing, not
+      # just restart an already-built one.
+      assert_file("phx_blog/justfile", fn file ->
+        assert file =~ ~r/^serve:/m, "the harness has nothing to run for this copy's own app"
+
+        assert file =~ "mix loadpaths",
+               "serve must check whether deps/_build are even usable before trying to " <>
+                 "boot on top of them"
+
+        assert file =~ ~r/mix deps\.get/,
+               "a checkout with no deps/ (every fresh working copy) has no recovery path"
+
+        assert file =~ "assets/package.json" and file =~ "assets/node_modules",
+               "serve never checks for the exact gap that left a copy's JS build " <>
+                 "silently empty — see mix.exs's npm_install for the same check"
+
+        assert file =~ ~r/mix assets\.setup/,
+               "the assets check has nothing to run once it notices node_modules is missing"
+
+        assert file =~ "exec",
+               "phx.server should replace this shell, not run as its child — the harness " <>
+                 "tracks the pid this recipe's own shell reports"
+      end)
+
       assert_file("phx_blog/lib/phx_blog_web.ex", fn file ->
         assert file =~ "defmodule PhxBlogWeb do"
         assert file =~ "import Phoenix.HTML"
