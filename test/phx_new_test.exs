@@ -117,6 +117,27 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ "{:phoenix_live_dashboard,"
       end)
 
+      # CodeMySpec, 2026-09-29: `tailwind.install`/`esbuild.install` fetch
+      # their own standalone binaries specifically so a generated app never
+      # needs Node — but a project that later gains an `assets/package.json`
+      # (a JS library that only ships via npm) still needs it installed, or
+      # every hook bound to it goes silently inert with no error anywhere.
+      # Found live on a per-copy QA run: metric_flow's node_modules was never
+      # installed, so every phx-click was dead.
+      assert_file("phx_blog/mix.exs", fn file ->
+        assert file =~ "\"assets.setup\": [&npm_install/1,",
+               "assets.setup no longer installs npm dependencies conditionally"
+
+        assert file =~ ~r/defp npm_install\(args\) do/,
+               "the conditional npm-install step this alias depends on is missing"
+
+        assert file =~ ~s|File.exists?(Path.join("assets", "package.json"))|,
+               "npm_install must stay conditional on assets/package.json — an " <>
+                 "unconditional npm install would put a Node/npm requirement on " <>
+                 "every generated app, which tailwind.install/esbuild.install exist " <>
+                 "specifically to avoid"
+      end)
+
       assert_file("phx_blog/lib/phx_blog_web.ex", fn file ->
         assert file =~ "defmodule PhxBlogWeb do"
         assert file =~ "import Phoenix.HTML"

@@ -155,12 +155,34 @@ defmodule <%= @app_module %>.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       spex: ["ecto.create --quiet", "ecto.migrate --quiet", "spex"]<% end %><%= if @asset_builders != [] do %>,
-      "assets.setup": <%= inspect Enum.map(@asset_builders, &"#{&1}.install --if-missing") %>,
+      "assets.setup": [&npm_install/1<%= for b <- @asset_builders do %>, "<%= b %>.install --if-missing"<% end %>],
       "assets.build": <%= inspect ["compile" | Enum.map(@asset_builders, &"#{&1} #{@app_name}")] %>,
       "assets.deploy": [
 <%= Enum.map(@asset_builders, &"        \"#{&1} #{@app_name} --minify\",\n") ++ ["        \"phx.digest\""] %>
       ]<% end %>,
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
     ]
+  end
+
+  # `tailwind.install`/`esbuild.install` fetch their own standalone binaries
+  # and were chosen specifically so a generated app never needs Node — most
+  # never gain an `assets/package.json` at all. But one that does (a JS
+  # library added later that only ships via npm) needs its dependencies
+  # installed too, or every hook silently never loads: nothing about a
+  # missing `node_modules` fails the build or the boot, an asset bundler just
+  # resolves a bare import to nothing and every `phx-click` bound to it goes
+  # inert with no error anywhere.
+  #
+  # Conditional, not unconditional: an unconditional `npm install` would put
+  # a Node/npm requirement on every generated app, defeating the reason
+  # `tailwind.install`/`esbuild.install` exist. This runs only when
+  # `assets/package.json` says there is something for npm to install.
+  defp npm_install(args) do
+    if File.exists?(Path.join("assets", "package.json")) do
+      Mix.shell().info("==> npm install (assets/package.json)")
+      {_, 0} = System.cmd("npm", ["install"], cd: "assets", into: IO.stream())
+    end
+
+    args
   end
 end

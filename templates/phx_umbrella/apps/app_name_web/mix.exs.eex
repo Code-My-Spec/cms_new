@@ -70,11 +70,23 @@ defmodule <%= @web_namespace %>.MixProject do
     [
       setup: ["deps.get"<%= if @asset_builders != [] do %>, "assets.setup", "assets.build"<% end %>]<%= if @ecto do %>,
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]<% end %><%= if @asset_builders != [] do %>,
-      "assets.setup": <%= inspect Enum.map(@asset_builders, &"#{&1}.install --if-missing") %>,
+      "assets.setup": [&npm_install/1<%= for b <- @asset_builders do %>, "<%= b %>.install --if-missing"<% end %>],
       "assets.build": <%= inspect ["compile" | Enum.map(@asset_builders, &"#{&1} #{@web_app_name}")] %>,
       "assets.deploy": [
 <%= Enum.map(@asset_builders, &"        \"#{&1} #{@web_app_name} --minify\",\n") ++ ["        \"phx.digest\""] %>
       ]<% end %>
     ]
+  end
+
+  # See the sibling non-umbrella template's own copy of this function for why
+  # it exists and why it is conditional on `assets/package.json`, not
+  # unconditional.
+  defp npm_install(args) do
+    if File.exists?(Path.join("assets", "package.json")) do
+      Mix.shell().info("==> npm install (assets/package.json)")
+      {_, 0} = System.cmd("npm", ["install"], cd: "assets", into: IO.stream())
+    end
+
+    args
   end
 end
