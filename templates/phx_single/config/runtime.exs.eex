@@ -43,7 +43,10 @@ end
 config :<%= @app_name %>, <%= @endpoint_module %>,
   http: [port: String.to_integer(System.get_env("PORT", "4100"))]
 
-# Where this app's preview answers.
+# Where this app's preview answers, for `ClientUtils.PreviewFraming` — the
+# tunnel that actually carries the preview is the harness's, not this app's;
+# see its own supervisor. This app only needs to know the embedder to allow
+# framing from.
 #
 # Read at boot rather than handed to the app by whoever started it, so a preview
 # provisioned after the app was first run is picked up by restarting it and
@@ -54,8 +57,8 @@ config :<%= @app_name %>, <%= @endpoint_module %>,
 # all, so they arrive as CMS_PREVIEW_* variables. `config/2` reads whichever
 # applies.
 #
-# Empty when neither says anything, which leaves the tunnel disabled and the
-# framing plug a no-op — the ordinary state for an app nobody has previewed yet.
+# Empty when neither says anything, which leaves the framing plug a no-op —
+# the ordinary state for an app nobody has previewed yet.
 config :<%= @app_name %>,
        :preview,
        ClientUtils.Harness.Preview.config(File.cwd!(),

@@ -77,51 +77,33 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ ~r/^\s+ip: {0, 0, 0, 0, 0, 0, 0, 0}$/m
       end)
 
-      # CodeMySpec, story 968 criterion 2968: a generated app ships able to
-      # carry its own preview, and runs nothing until it is given one.
-      #
-      # Both halves matter and they pull against each other. Shipping the tunnel
-      # is what makes a preview arrive without anybody editing the app's source
-      # afterwards — the person this is for is non-technical, and "add this child
-      # spec to your supervision tree" is not a step they can take. But most
-      # generated apps are run long before they are ever previewed, and one that
-      # dialled a tunnel that does not exist would be broken for the ordinary
-      # case in order to be ready for the rare one.
+      # CodeMySpec, 2026-09-29: the harness holds a working copy's preview
+      # tunnel now, not the generated app — an app restart no longer needs to
+      # bounce cloudflared with it, and the harness runs one connector per
+      # tunnel instead of every copy running its own. `ClientUtils.CloudflareTunnel`
+      # was the app-held half of story 968 criterion 2968; this generator must
+      # never wire a generated app into it again.
       #
       # Tested here rather than in CodeMySpec's spex suite because this is what
       # the generator writes, and `mix cms.new` is not a task there. A spec over
       # there asserting on this template's contents would be green and prove
       # nothing.
       assert_file("phx_blog/lib/phx_blog_web/application.ex", fn file ->
-        assert file =~ "ClientUtils.CloudflareTunnel",
-               "the generated app cannot carry a preview, so a provisioned one never " <>
-                 "reaches it and the only remedy is editing the app's source"
+        refute file =~ "ClientUtils.CloudflareTunnel",
+               "a generated app must not run its own tunnel — the harness holds it now, " <>
+                 "and a stray app-held connector duplicates the harness's own"
 
-        assert file =~ "enabled: config[:tunnel_id] not in [nil, \"\"]",
-               "the tunnel is unconditional, so an app with no preview boots dialling " <>
-                 "one that does not exist"
-
-        # Order, not just presence. The tunnel reconfigures the endpoint so URL
-        # helpers generate the public address, and that reads a config table the
-        # endpoint does not create until it has started. Placed first, every
-        # generated app with a preview crashes on boot inside
-        # `Phoenix.Config.config_change/3` — an error naming neither the tunnel
-        # nor the ordering.
-        #
-        # Shipped that way in 1.8.9 and found by an agent wiring it into a real
-        # application, not here.
-        [_, before_tunnel] =
-          Regex.run(~r/children = \[(.*?)ClientUtils\.CloudflareTunnel/s, file)
-
-        assert before_tunnel =~ "PhxBlogWeb.Endpoint",
-               "the tunnel starts before the endpoint, so a generated app with a " <>
-                 "preview configured cannot boot"
+        refute file =~ "preview_tunnel(",
+               "the tunnel-options helper only ever fed CloudflareTunnel; nothing else " <>
+                 "should be calling it"
       end)
 
+      # The embedder still comes from here — `ClientUtils.PreviewFraming` reads
+      # it to allow the preview pane to frame the app, which has nothing to do
+      # with who runs the tunnel.
       assert_file("phx_blog/config/runtime.exs", fn file ->
         assert file =~ "ClientUtils.Harness.Preview.config(",
-               "nothing reads the preview, so the tunnel is configured with nothing " <>
-                 "whatever onboarding recorded"
+               "PreviewFraming has nothing to allow-frame without this"
       end)
 
       # CodeMySpec: Application moved to the web namespace (supervises Repo AND Endpoint)
