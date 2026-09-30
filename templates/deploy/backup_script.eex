@@ -114,10 +114,43 @@ s3() {
       --user "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" \
       --data-binary "@${file}" "$url" >/dev/null
   else
-    curl -sSf --aws-sigv4 "aws:amz:${BACKUP_REGION}:s3" \
-      --user "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" \
-      -o "$file" "$url"
+    s3_get_with_retry "$url" "$file"
   fi
+}
+
+# A GET immediately after the PUT that created it — restore-proof's whole
+# reason for existing (see the moduledoc) is that dump and restore run back
+# to back, every time. Object storage that accepts a write is not always
+# ready to serve it back the instant it answers, and a 404 in that window
+# reads exactly like a lost backup rather than like timing. Observed live on
+# metric_flow: 404 immediately after a clean PUT, then a plain re-run of the
+# same restore, seconds later, succeeded with no code change at all.
+#
+# Only the GET retries. A PUT that fails is a write that did not happen —
+# retrying it risks a second attempt racing a first that actually landed —
+# where a GET is naturally idempotent and safe to just ask again. Three
+# attempts, 1s/2s/4s apart: generous for propagation lag, small next to how
+# long restoring the dump itself can take.
+s3_get_with_retry() {
+  local url="$1" file="$2"
+  local attempt=1 max_attempts=4 delay=1
+
+  while true; do
+    if curl -sSf --aws-sigv4 "aws:amz:${BACKUP_REGION}:s3" \
+        --user "${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}" \
+        -o "$file" "$url"; then
+      return 0
+    fi
+
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      return 1
+    fi
+
+    echo "GET $url failed on attempt $attempt/$max_attempts — retrying in ${delay}s" >&2
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
 }
 
 # Postgres tooling, from wherever it actually is.

@@ -203,6 +203,23 @@ defmodule Mix.Tasks.Cms.NewTest do
       assert deploy =~ ~s(CMS_IMAGE_REPO="${CMS_IMAGE_PATH#*/}")
       assert deploy =~ ~s(CMS_REGISTRY_SERVER="${CMS_IMAGE_PATH%%/*}")
 
+      # 98156e74: object storage that accepts a PUT is not always ready to
+      # serve it back the instant it answers, and restore-proof runs a GET
+      # right after the PUT that created the object, every time. Observed
+      # live: a 404 immediately after a clean upload, gone on a plain re-run
+      # seconds later with no code change. Only the GET retries — a PUT
+      # that fails is a write that did not happen, and retrying that risks
+      # a second attempt racing a first that actually landed.
+      backup = File.read!("cms_blog/bin/backup")
+      assert backup =~ "s3_get_with_retry"
+
+      [_, s3_body] = String.split(backup, "s3() {\n", parts: 2)
+      [s3_body, _] = String.split(s3_body, "\n}\n", parts: 2)
+      [put_clause, get_clause] = String.split(s3_body, "else", parts: 2)
+
+      refute put_clause =~ "retry", "the PUT path should not retry a write that may have landed"
+      assert get_clause =~ "s3_get_with_retry"
+
       # PHX_HOST travels into every URL Phoenix builds. It was the literal
       # placeholder while `proxy.host` beside it read the real value.
       uat = File.read!("cms_blog/config/deploy.uat.yml")
