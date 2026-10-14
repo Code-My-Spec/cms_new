@@ -2,6 +2,22 @@
 default:
     @just --list
 
+# The CodeMySpec gate runs its exunit lane through this recipe, passing the
+# files and options it would have given `mix test`; change how the suite runs
+# here, and keep passing the arguments through.
+# Run tests
+[positional-arguments]
+test *args:
+    mix test "$@"
+
+# The CodeMySpec gate runs its spex lane through this recipe, with the files it
+# wants run and `--jsonl=<path>`, where it reads the failures back. Change how
+# the suite runs here (shard it, say), and keep both reaching `mix spex`.
+# Run spex
+[positional-arguments]
+spex *args:
+    mix spex "$@"
+
 # Make a working copy of this project, adjacent to this checkout.
 #
 # The CodeMySpec harness calls this instead of running `git worktree add`

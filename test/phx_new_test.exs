@@ -146,6 +146,13 @@ defmodule Mix.Tasks.Phx.NewTest do
       assert_file("phx_blog/justfile", fn file ->
         assert file =~ ~r/^serve:/m, "the harness has nothing to run for this copy's own app"
 
+        # The gate runs a project's suites through these, with the arguments it
+        # would have given mix — quoted, because a checkout path can hold a space.
+        assert file =~ ~r/^test \*args:\n    mix test "\$@"$/m
+        assert file =~ ~r/^spex \*args:\n    mix spex "\$@"$/m
+        assert file =~ "[positional-arguments]\ntest *args:"
+        assert file =~ "[positional-arguments]\nspex *args:"
+
         assert file =~ "mix loadpaths",
                "serve must check whether deps/_build are even usable before trying to " <>
                  "boot on top of them"
