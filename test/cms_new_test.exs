@@ -243,8 +243,9 @@ defmodule Mix.Tasks.Cms.NewTest do
       # nor the version to install. `mix deps.get` succeeds first, so the tree
       # looks healthy right up until the first task that matters.
       tool_versions = File.read!("cms_blog/.tool-versions")
-      assert tool_versions =~ "elixir 1.20"
-      assert tool_versions =~ "erlang"
+      otp_release = to_string(:erlang.system_info(:otp_release))
+      otp_version = Path.join([to_string(:code.root_dir()), "releases", otp_release, "OTP_VERSION"]) |> File.read!() |> String.trim()
+      assert tool_versions == "erlang #{otp_version}\nelixir #{System.version()}-otp-#{otp_release}\n"
 
       # One encrypted env per environment, because story 967 keys them per
       # environment too.
