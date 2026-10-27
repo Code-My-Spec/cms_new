@@ -63,7 +63,16 @@ config :<%= @app_name %>, <%= @endpoint_module %>,
       ~r"lib/<%= @lib_web_name %>/router\.ex$"<%= @config_regex_E %>,
       ~r"lib/<%= @lib_web_name %>/(controllers|live|components)/.*\.(ex|heex)$"<%= @config_regex_E %>
     ]
-  ]<% end %>
+  ]
+
+# Watch only the directories the patterns above name. Unset, the watcher
+# covers the whole project, `_build` and `deps` included, and every compile
+# floods it. A pattern for a directory not listed here never fires.
+config :phoenix_live_reload, :dirs, [
+  "priv/static",<%= if @gettext do %>
+  "priv/gettext",<% end %>
+  "lib/<%= @lib_web_name %>"
+]<% end %>
 
 # Enable dev routes for dashboard and mailbox
 config :<%= @app_name %>, dev_routes: true
