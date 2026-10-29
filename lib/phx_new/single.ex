@@ -275,9 +275,10 @@ defmodule Phx.New.Single do
   @doc """
   Emits the deploy boilerplate.
 
-  A generated project is deployable on its first push: the Dockerfile and CI
-  workflow build a multi-arch image, one deploy config per environment names
-  its own host and APP_ENV, and `bin/deploy` enforces migrate-before-swap.
+  A generated project is deployable on its first push: CodeMySpec's provisioning
+  builds the image for the target server's architecture, one deploy config per
+  environment names its own host and APP_ENV, and `bin/deploy` enforces
+  migrate-before-swap.
 
   The setup routine fills in the placeholder hosts and keys; it does not write
   any of these files, which is what lets it assume they exist.

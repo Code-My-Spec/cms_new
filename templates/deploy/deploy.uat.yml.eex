@@ -29,11 +29,10 @@ registry:
     - KAMAL_REGISTRY_PASSWORD
 
 builder:
-  # arm64: UAT runs on a cheaper European ARM box (Hetzner cax line), while
-  # production runs x64 in the US. Both architectures are published by CI as
-  # one manifest list, so the same commit deploys to either — but this must
-  # match the host or the container starts and immediately dies.
-  arch: arm64
+  # Must match the host, or the container starts and immediately dies.
+  # Provisioning sets CMS_TARGET_ARCH from the server it verified; the
+  # fallback is this environment's usual box.
+  arch: <%%= ENV["CMS_TARGET_ARCH"] || "arm64" %>
   local: true
 
 env:

@@ -35,12 +35,10 @@ registry:
     - KAMAL_REGISTRY_PASSWORD
 
 builder:
-  # amd64: production runs x64 in the US, while UAT runs on a cheaper European
-  # ARM box. CI publishes both architectures as one manifest list so the same
-  # commit deploys to either — but this must match the host or the container
-  # starts and immediately dies.
-  arch: amd64
-  # Deploys pass --skip-push: CI built and pushed the image, this only pulls it.
+  # Must match the host, or the container starts and immediately dies.
+  # Provisioning sets CMS_TARGET_ARCH from the server it verified; the
+  # fallback is this environment's usual box.
+  arch: <%%= ENV["CMS_TARGET_ARCH"] || "amd64" %>
   local: true
 
 env:

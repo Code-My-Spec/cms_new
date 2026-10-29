@@ -179,6 +179,12 @@ defmodule Mix.Tasks.Cms.NewTest do
       # The builder makes the image on the burst box at deploy; no CI build.
       refute File.exists?("cms_blog/.github/workflows/build.yml")
 
+      # The image is built for the server provisioning verified; each config
+      # takes that architecture rather than hard-coding one.
+      for config <- ~w(config/deploy.yml config/deploy.uat.yml) do
+        assert File.read!("cms_blog/#{config}") =~ ~s(arch: <%= ENV["CMS_TARGET_ARCH"])
+      end
+
       # The container's CMD names bin/server. Every generated app carried
       # `CMD ["/app/bin/server"]` and nothing that produced that file, so every
       # image built from one started and immediately died with
