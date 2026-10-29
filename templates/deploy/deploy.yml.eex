@@ -29,8 +29,8 @@ proxy:
     path: /health
 
 registry:
-  server: <%%= ENV["CMS_REGISTRY_SERVER"] || "ghcr.io" %>
-  username: <%%= ENV["KAMAL_REGISTRY_USERNAME"] || "<GITHUB_USER>" %>
+  server: <%%= ENV["CMS_REGISTRY_SERVER"] %>
+  username: <%%= ENV["KAMAL_REGISTRY_USERNAME"] %>
   password:
     - KAMAL_REGISTRY_PASSWORD
 

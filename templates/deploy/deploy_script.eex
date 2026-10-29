@@ -39,63 +39,29 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-SHA=$(git rev-parse HEAD)
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-# 2. Get an image to deploy.
-#
-#    Two callers, two ways. A person runs this and wants CI to have built the
-#    image: push, wait for the workflow, pull what it published from ghcr.io.
-#    Setup runs it having *already* built the image on its own builder and
-#    pushed it to the project's own registry, and says so in CMS_IMAGE.
-#
-#    The second path takes no GitHub credential at all, which is the point —
-#    the registry is on this project's own box and answers on loopback. A
-#    deploy that needed `gh auth token` to pull would fail on any machine
-#    without the gh CLI logged in, including every one of ours.
-if [ -n "${CMS_IMAGE:-}" ]; then
-  # `repo:tag` split from the right, because the registry host carries a port
-  # and therefore a colon of its own: localhost:5000/app:abc123.
-  CMS_IMAGE_PATH="${CMS_IMAGE%:*}"
-  VERSION="${CMS_IMAGE##*:}"
-  # The registry kamal should talk to is the host part of the reference, not
-  # ghcr.io. Derived rather than passed separately, so the two cannot disagree
-  # about where the image is.
-  export CMS_REGISTRY_SERVER="${CMS_IMAGE_PATH%%/*}"
-  # kamal composes its `image:` under `registry.server`, so this is the
-  # repository WITHOUT the host. Set to the whole path it produced
-  # `10.0.0.3:5000/10.0.0.3:5000/app:sha` and the pull failed on a name no
-  # registry has.
-  export CMS_IMAGE_REPO="${CMS_IMAGE_PATH#*/}"
-  echo "deploying the image setup built: $CMS_IMAGE"
-else
-  git push origin "$BRANCH"
-  sleep 5
-
-  RUN_ID=$(gh run list --workflow=build.yml --branch="$BRANCH" --limit=1 \
-    --json databaseId --jq '.[0].databaseId')
-
-  if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-    echo "could not find a CI run for $BRANCH — is the build workflow enabled?" >&2
-    exit 1
-  fi
-
-  gh run watch "$RUN_ID" --exit-status --interval 10
-
-  # KAMAL_REGISTRY_PASSWORD pulls the image from ghcr.io. Only this path needs
-  # it; the registry setup publishes to is not GitHub's.
-  export KAMAL_REGISTRY_PASSWORD
-  KAMAL_REGISTRY_PASSWORD=$(gh auth token)
-
-  if [ -z "${KAMAL_REGISTRY_PASSWORD:-}" ]; then
-    echo "ERROR: KAMAL_REGISTRY_PASSWORD is empty; refusing to deploy" >&2
-    exit 1
-  fi
-
-  VERSION="$SHA"
+# 2. The image to deploy. CodeMySpec's provisioning builds it on the
+#    environment's burst box, pushes it to the project's own registry, and
+#    names it in CMS_IMAGE. Nothing here needs GitHub or its CLI.
+if [ -z "${CMS_IMAGE:-}" ]; then
+  echo "CMS_IMAGE is not set. Deploys go through CodeMySpec's provisioning, which builds the image and passes it here." >&2
+  exit 1
 fi
 
-# 3. The decryption key, on both paths. Handed to the container so it can
+# `repo:tag` split from the right, because the registry host carries a port
+# and therefore a colon of its own: localhost:5000/app:abc123.
+CMS_IMAGE_PATH="${CMS_IMAGE%:*}"
+VERSION="${CMS_IMAGE##*:}"
+# The registry kamal talks to is the host part of the reference, derived
+# rather than passed separately so the two cannot disagree.
+export CMS_REGISTRY_SERVER="${CMS_IMAGE_PATH%%/*}"
+# kamal composes its `image:` under `registry.server`, so this is the
+# repository WITHOUT the host. Set to the whole path it produced
+# `10.0.0.3:5000/10.0.0.3:5000/app:sha` and the pull failed on a name no
+# registry has.
+export CMS_IMAGE_REPO="${CMS_IMAGE_PATH#*/}"
+echo "deploying the image setup built: $CMS_IMAGE"
+
+# 3. The decryption key. Handed to the container so it can
 #    decrypt its own environment at boot.
 #
 #    Checked for emptiness before proceeding: an empty value does not fail
