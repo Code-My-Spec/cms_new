@@ -144,6 +144,8 @@ defmodule Mix.Tasks.Phx.NewTest do
       # from, so this has to be able to bring itself up from nothing, not
       # just restart an already-built one.
       assert_file("phx_blog/justfile", fn file ->
+        assert file =~ ~r/^dev-setup:\n    env MIX_ENV=dev mix setup$/m
+
         assert file =~ ~r/^serve:/m, "the harness has nothing to run for this copy's own app"
 
         # The gate runs a project's suites through these, with the arguments it

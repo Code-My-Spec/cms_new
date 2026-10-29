@@ -2,6 +2,11 @@
 default:
     @just --list
 
+# Prepare a freshly generated or connected checkout for local development.
+# The generated Mix alias handles dependencies, database, and configured assets.
+dev-setup:
+    env MIX_ENV=dev mix setup
+
 # The CodeMySpec gate runs its exunit lane through this recipe, passing the
 # files and options it would have given `mix test`; change how the suite runs
 # here, and keep passing the arguments through.
