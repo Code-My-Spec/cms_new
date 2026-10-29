@@ -170,11 +170,14 @@ defmodule Mix.Tasks.Cms.NewTest do
 
       # Story 970: the setup routine fills in values and runs commands, so it
       # can assume these exist rather than generating them.
-      for path <- ~w(Dockerfile .github/workflows/build.yml config/deploy.yml
+      for path <- ~w(Dockerfile config/deploy.yml
                      config/deploy.uat.yml .sops.yaml rel/overlays/bin/migrate
                      rel/overlays/bin/server bin/deploy bin/backup) do
         assert File.exists?("cms_blog/#{path}"), "expected the generator to emit #{path}"
       end
+
+      # The builder makes the image on the burst box at deploy; no CI build.
+      refute File.exists?("cms_blog/.github/workflows/build.yml")
 
       # The container's CMD names bin/server. Every generated app carried
       # `CMD ["/app/bin/server"]` and nothing that produced that file, so every

@@ -173,7 +173,6 @@ defmodule Phx.New.Single do
   template(:deploy, [
     {:eex, :project,
      "deploy/Dockerfile.eex": "Dockerfile",
-     "deploy/build.yml.eex": ".github/workflows/build.yml",
      "deploy/deploy.yml.eex": "config/deploy.yml",
      "deploy/deploy.uat.yml.eex": "config/deploy.uat.yml",
      "deploy/sops.yaml.eex": ".sops.yaml",
