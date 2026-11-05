@@ -251,10 +251,15 @@ defmodule Mix.Tasks.Cms.NewTest do
       # refuses to run anywhere the default is older — naming neither the fix
       # nor the version to install. `mix deps.get` succeeds first, so the tree
       # looks healthy right up until the first task that matters.
-      tool_versions = File.read!("cms_blog/.tool-versions")
-      otp_release = to_string(:erlang.system_info(:otp_release))
-      otp_version = Path.join([to_string(:code.root_dir()), "releases", otp_release, "OTP_VERSION"]) |> File.read!() |> String.trim()
-      assert tool_versions == "erlang #{otp_version}\nelixir #{System.version()}-otp-#{otp_release}\n"
+      # The pin is the generator's target toolchain, not whatever the
+      # generating machine runs, and the Dockerfile builds on the same pair.
+      assert File.read!("cms_blog/.tool-versions") ==
+               "erlang #{Phx.New.Toolchain.otp()}\nelixir #{Phx.New.Toolchain.elixir()}-otp-#{Phx.New.Toolchain.otp_major()}\n"
+
+      dockerfile = File.read!("cms_blog/Dockerfile")
+      assert dockerfile =~ "ARG ELIXIR_VERSION=#{Phx.New.Toolchain.elixir()}\n"
+      assert dockerfile =~ "ARG OTP_VERSION=#{Phx.New.Toolchain.otp()}\n"
+      assert dockerfile =~ "ARG DEBIAN_VERSION=bookworm-#{Phx.New.Toolchain.image_date()}-slim\n"
 
       # One encrypted env per environment, because story 967 keys them per
       # environment too.

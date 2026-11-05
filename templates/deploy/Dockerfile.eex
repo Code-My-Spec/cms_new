@@ -5,9 +5,10 @@
 # (Hetzner's cax line is ARM64, the cx/cpx lines are amd64). An image built
 # for the wrong architecture fails at container start, after a deploy that
 # otherwise looked healthy.
-ARG ELIXIR_VERSION=1.20.3
-ARG OTP_VERSION=28.4.3
-ARG DEBIAN_VERSION=bookworm-20260803-slim
+# The same pair as the app's .tool-versions (Phx.New.Toolchain).
+ARG ELIXIR_VERSION=<%= Phx.New.Toolchain.elixir() %>
+ARG OTP_VERSION=<%= Phx.New.Toolchain.otp() %>
+ARG DEBIAN_VERSION=bookworm-<%= Phx.New.Toolchain.image_date() %>-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"

@@ -1,3 +1,1 @@
-<% otp_release = :erlang.system_info(:otp_release) |> to_string()
-otp_version = Path.join([to_string(:code.root_dir()), "releases", otp_release, "OTP_VERSION"]) |> File.read!() |> String.trim() %>erlang <%= otp_version %>
-elixir <%= System.version() %>-otp-<%= otp_release %>
+<%= Phx.New.Toolchain.tool_versions() %>
