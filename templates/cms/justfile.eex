@@ -160,3 +160,10 @@ ci:
 
 # The box runs this after an accepted push to dev.
 dev: restart
+
+# The CodeMySpec loop runs a provision work by calling this once for each step
+# named in `provision/<target>.steps`, with PROVISION_TARGET set, and reads the
+# SARIF file it leaves. A step is a script in `provision/`; add one by adding a
+# script and a line.
+provision step dir:
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/{{step}}.sarif" -- sh provision/{{step}}.sh

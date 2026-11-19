@@ -176,6 +176,15 @@ defmodule Mix.Tasks.Cms.NewTest do
         assert File.exists?("cms_blog/#{path}"), "expected the generator to emit #{path}"
       end
 
+      # A provision work's steps: each list names scripts that exist and parse.
+      for target <- ~w(dev uat),
+          step <- "cms_blog/provision/#{target}.steps" |> File.read!() |> String.split() do
+        assert {_, 0} = System.cmd("sh", ["-n", "cms_blog/provision/#{step}.sh"])
+      end
+
+      assert File.read!("cms_blog/provision/env.sh") =~ "APP=cms_blog"
+      assert File.read!("cms_blog/justfile") =~ "provision step dir:"
+
       # The builder makes the image on the burst box at deploy; no CI build.
       refute File.exists?("cms_blog/.github/workflows/build.yml")
 

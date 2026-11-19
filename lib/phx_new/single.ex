@@ -10,57 +10,60 @@ defmodule Phx.New.Single do
      "phx_single/config/prod.exs.eex": "config/prod.exs",
      "phx_single/config/runtime.exs.eex": "config/runtime.exs",
      "phx_single/config/test.exs.eex": "config/test.exs"},
-    {:eex, :web,
-     # CodeMySpec: the Application module supervises both the Repo and the
-     # Endpoint, so it belongs to the web namespace, not the app one.
-     "phx_single/lib/app_name/application.ex.eex": "lib/:lib_web_name/application.ex",
-     "phx_single/lib/app_name.ex.eex": "lib/:app.ex",
-     # `rel/overlays/bin/migrate` calls `<App>.Release.migrate/0`, so the
-     # module it calls has to exist. Without it the deploy reaches the
-     # migration container and dies on `UndefinedFunctionError`, reported as
-     # "Migration failed (exit 1) — the previous version is still serving".
-     "phx_single/lib/app_name/release.ex.eex": "lib/:app/release.ex",
-     "phx_web/controllers/error_json.ex.eex": "lib/:lib_web_name/controllers/error_json.ex",
-     # Health endpoint ships regardless of --no-html: the deploy proxy gates
-     # the traffic swap on it either way.
-     "phx_web/controllers/health_controller.ex.eex":
-       "lib/:lib_web_name/controllers/health_controller.ex",
-     "phx_web/controllers/verify_controller.ex.eex":
-       "lib/:lib_web_name/controllers/verify_controller.ex",
-     # Mints the token the preview pane's own frame redeems to sign in without
-     # ever asking Google or GitHub to render inside an iframe — see the
-     # controller's own moduledoc for why the deploy key alone cannot do this.
-     "phx_web/controllers/preview_login_controller.ex.eex":
-       "lib/:lib_web_name/controllers/preview_login_controller.ex",
-     # Ships regardless of whether inbound mail setup has run yet, so a
-     # domain pointed here early gets a real (if unverified) answer instead
-     # of a 404.
-     "phx_web/controllers/resend_webhook_controller.ex.eex":
-       "lib/:lib_web_name/controllers/resend_webhook_controller.ex",
-     "phx_web/cache_body_reader.ex.eex": "lib/:lib_web_name/cache_body_reader.ex",
-     "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
-     "phx_web/router.ex.eex": "lib/:lib_web_name/router.ex",
-     "phx_web/telemetry.ex.eex": "lib/:lib_web_name/telemetry.ex",
-     "phx_single/lib/app_name_web.ex.eex": "lib/:lib_web_name.ex",
-     "phx_single/mix.exs.eex": "mix.exs",
-     "phx_single/README.md.eex": "README.md",
-     "phx_single/formatter.exs.eex": ".formatter.exs",
-     "phx_single/gitignore.eex": ".gitignore",
-     # mix.exs declares `elixir: "~> 1.20"`, and without a pin beside it the
-     # app simply refuses to run anywhere the default is older:
-     #
-     #   ** (Mix) You're trying to run :my_app on Elixir v1.19.4 but it has
-     #   declared in its mix.exs file it supports only Elixir ~> 1.20
-     #
-     # Which is a true statement that names neither the fix nor the version to
-     # install, and it arrives on the first `mix` command in a brand new app.
-     # Worse, `mix deps.get` succeeds first — so the tree looks fine right up
-     # until the first task that matters.
-     "phx_single/tool_versions.eex": ".tool-versions",
-     "phx_test/support/conn_case.ex.eex": "test/support/conn_case.ex",
-     "phx_single/test/test_helper.exs.eex": "test/test_helper.exs",
-     "phx_test/controllers/error_json_test.exs.eex":
-       "test/:lib_web_name/controllers/error_json_test.exs"},
+    {
+      :eex,
+      :web,
+      # CodeMySpec: the Application module supervises both the Repo and the
+      # Endpoint, so it belongs to the web namespace, not the app one.
+      # `rel/overlays/bin/migrate` calls `<App>.Release.migrate/0`, so the
+      # module it calls has to exist. Without it the deploy reaches the
+      # migration container and dies on `UndefinedFunctionError`, reported as
+      # "Migration failed (exit 1) — the previous version is still serving".
+      # Health endpoint ships regardless of --no-html: the deploy proxy gates
+      # the traffic swap on it either way.
+      # Mints the token the preview pane's own frame redeems to sign in without
+      # ever asking Google or GitHub to render inside an iframe — see the
+      # controller's own moduledoc for why the deploy key alone cannot do this.
+      # Ships regardless of whether inbound mail setup has run yet, so a
+      # domain pointed here early gets a real (if unverified) answer instead
+      # of a 404.
+      # mix.exs declares `elixir: "~> 1.20"`, and without a pin beside it the
+      # app simply refuses to run anywhere the default is older:
+      #
+      #   ** (Mix) You're trying to run :my_app on Elixir v1.19.4 but it has
+      #   declared in its mix.exs file it supports only Elixir ~> 1.20
+      #
+      # Which is a true statement that names neither the fix nor the version to
+      # install, and it arrives on the first `mix` command in a brand new app.
+      # Worse, `mix deps.get` succeeds first — so the tree looks fine right up
+      # until the first task that matters.
+      "phx_single/lib/app_name/application.ex.eex": "lib/:lib_web_name/application.ex",
+      "phx_single/lib/app_name.ex.eex": "lib/:app.ex",
+      "phx_single/lib/app_name/release.ex.eex": "lib/:app/release.ex",
+      "phx_web/controllers/error_json.ex.eex": "lib/:lib_web_name/controllers/error_json.ex",
+      "phx_web/controllers/health_controller.ex.eex":
+        "lib/:lib_web_name/controllers/health_controller.ex",
+      "phx_web/controllers/verify_controller.ex.eex":
+        "lib/:lib_web_name/controllers/verify_controller.ex",
+      "phx_web/controllers/preview_login_controller.ex.eex":
+        "lib/:lib_web_name/controllers/preview_login_controller.ex",
+      "phx_web/controllers/resend_webhook_controller.ex.eex":
+        "lib/:lib_web_name/controllers/resend_webhook_controller.ex",
+      "phx_web/cache_body_reader.ex.eex": "lib/:lib_web_name/cache_body_reader.ex",
+      "phx_web/endpoint.ex.eex": "lib/:lib_web_name/endpoint.ex",
+      "phx_web/router.ex.eex": "lib/:lib_web_name/router.ex",
+      "phx_web/telemetry.ex.eex": "lib/:lib_web_name/telemetry.ex",
+      "phx_single/lib/app_name_web.ex.eex": "lib/:lib_web_name.ex",
+      "phx_single/mix.exs.eex": "mix.exs",
+      "phx_single/README.md.eex": "README.md",
+      "phx_single/formatter.exs.eex": ".formatter.exs",
+      "phx_single/gitignore.eex": ".gitignore",
+      "phx_single/tool_versions.eex": ".tool-versions",
+      "phx_test/support/conn_case.ex.eex": "test/support/conn_case.ex",
+      "phx_single/test/test_helper.exs.eex": "test/test_helper.exs",
+      "phx_test/controllers/error_json_test.exs.eex":
+        "test/:lib_web_name/controllers/error_json_test.exs"
+    },
     {:keep, :web,
      "phx_web/controllers": "lib/:lib_web_name/controllers",
      "phx_test/controllers": "test/:lib_web_name/controllers"}
@@ -78,8 +81,10 @@ defmodule Phx.New.Single do
      "phx_web/controllers/error_html.ex.eex": "lib/:lib_web_name/controllers/error_html.ex",
      "phx_test/controllers/error_html_test.exs.eex":
        "test/:lib_web_name/controllers/error_html_test.exs",
-     "phx_web/components/core_components.ex.eex": "lib/:lib_web_name/components/core_components.ex",
-     "phx_web/controllers/page_controller.ex.eex": "lib/:lib_web_name/controllers/page_controller.ex",
+     "phx_web/components/core_components.ex.eex":
+       "lib/:lib_web_name/components/core_components.ex",
+     "phx_web/controllers/page_controller.ex.eex":
+       "lib/:lib_web_name/controllers/page_controller.ex",
      "phx_web/controllers/page_html.ex.eex": "lib/:lib_web_name/controllers/page_html.ex",
      "phx_web/controllers/page_html/home.html.heex.eex":
        "lib/:lib_web_name/controllers/page_html/home.html.heex",
@@ -183,6 +188,23 @@ defmodule Phx.New.Single do
      "deploy/backup_script.eex": "bin/backup"}
   ])
 
+  # What the loop's provision works run: one step list per target (dev sets up
+  # a machine, uat a box) and one script per step. Proven on a real app first.
+  template(:provision, [
+    {:eex, :project, "provision/env.sh.eex": "provision/env.sh"},
+    {:text, :project,
+     "provision/dev.steps": "provision/dev.steps",
+     "provision/uat.steps": "provision/uat.steps",
+     "provision/tools.sh": "provision/tools.sh",
+     "provision/setup.sh": "provision/setup.sh",
+     "provision/serve.sh": "provision/serve.sh",
+     "provision/secrets.sh": "provision/secrets.sh",
+     "provision/database.sh": "provision/database.sh",
+     "provision/registry.sh": "provision/registry.sh",
+     "provision/image.sh": "provision/image.sh",
+     "provision/deploy.sh": "provision/deploy.sh"}
+  ])
+
   # Rendered by gen_deploy/1 into one file per environment; the target below
   # is a placeholder that is never used.
   template(:deploy_envs, [
@@ -265,7 +287,11 @@ defmodule Phx.New.Single do
     # Spec directories the harness writes into. `.gitkeep` files rather than
     # bare mkdir: git does not track empty directories, and the structure has
     # to survive a clone for the setup check to keep passing.
-    for dir <- [".code_my_spec/rules", ".code_my_spec/spec/#{app}", ".code_my_spec/spec/#{app}_web"] do
+    for dir <- [
+          ".code_my_spec/rules",
+          ".code_my_spec/spec/#{app}",
+          ".code_my_spec/spec/#{app}_web"
+        ] do
       Mix.Generator.create_file(Path.join([project.project_path, dir, ".gitkeep"]), "")
     end
 
@@ -285,6 +311,7 @@ defmodule Phx.New.Single do
   """
   def gen_deploy(%Project{} = project) do
     copy_from(project, __MODULE__, :deploy)
+    copy_from(project, __MODULE__, :provision)
 
     # One encrypted env file per environment. Committed as placeholders so the
     # paths exist and `sops envs/<env>.enc.env` works immediately — the repo is
