@@ -157,7 +157,7 @@ defmodule Mix.Tasks.Phx.NewTest do
 
         # The loop's two doors: every suite, into a directory that may hold a space.
         assert file =~ ~r/^run dir:\n(    env MIX_ENV=test mix client_utils\.sarif "\{\{dir\}\}\/\w+\.sarif" -- mix (test|spex)\n){2}/m
-        assert file =~ ~r/^certify dir:\n.*compile --warnings-as-errors\n.*mix test\n.*mix spex$/m
+        assert file =~ ~r/^certify dir:\n.*format --check-formatted\n.*compile --warnings-as-errors\n.*mix test\n.*mix spex$/m
         assert file =~ ~r/^ci:\n.*deps.get\n.*format --check-formatted\n.*compile --warnings-as-errors\n.*mix test\n.*mix spex$/m
         assert file =~ ~r/^dev: restart$/m
 
