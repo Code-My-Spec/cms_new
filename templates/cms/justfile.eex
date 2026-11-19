@@ -23,6 +23,19 @@ test *args:
 spex *args:
     mix spex "$@"
 
+# The CodeMySpec loop checks a tree by calling these two with a directory, and
+# reads the SARIF files each leaves there. `run` is every suite; `certify` is
+# everything that must hold before work lands. Change what they run here; the
+# loop knows nothing about mix.
+run dir:
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/exunit.sarif" -- mix test
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/spex.sarif" -- mix spex
+
+certify dir:
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/compiler.sarif" -- mix compile --warnings-as-errors
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/exunit.sarif" -- mix test
+    env MIX_ENV=test mix client_utils.sarif "{{dir}}/spex.sarif" -- mix spex
+
 # Make a working copy of this project, adjacent to this checkout.
 #
 # The CodeMySpec harness calls this instead of running `git worktree add`
