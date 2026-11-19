@@ -147,3 +147,15 @@ restart:
     echo
     echo "TODO: restart <%= @app_module %> here — see the note above this recipe." >&2
     echo "Until then a promotion reports success without deploying anything." >&2
+
+# The box runs this on every push to dev, in a checkout of its own: the full
+# run, every test, no selection. Red refuses the push.
+ci:
+    mix deps.get
+    mix format --check-formatted
+    env MIX_ENV=test mix compile --warnings-as-errors
+    env MIX_ENV=test mix test
+    env MIX_ENV=test mix spex
+
+# The box runs this after an accepted push to dev.
+dev: restart
