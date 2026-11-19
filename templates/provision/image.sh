@@ -10,6 +10,8 @@ if ssh -o BatchMode=yes "$BOX" "docker image inspect $IMAGE:$tag >/dev/null 2>&1
 else
   docker build -q --platform "linux/$ARCH" --label "service=$APP-$ENV_NAME" -t "$IMAGE:$tag" .
   docker save "$IMAGE:$tag" | gzip | ssh -o BatchMode=yes "$BOX" "gunzip | docker load -q"
+  # Nothing of the build stays on this machine's Docker.
+  docker rmi "$IMAGE:$tag" >/dev/null
 fi
 # The box keeps no sign-in of its own (registry.sh logs out), so push as this
 # app's registry user, password over stdin, and sign out again after.

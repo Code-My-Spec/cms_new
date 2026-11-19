@@ -177,7 +177,7 @@ defmodule Mix.Tasks.Cms.NewTest do
       end
 
       # A provision work's steps: each list names scripts that exist and parse.
-      for target <- ~w(dev uat),
+      for target <- ~w(dev uat local),
           step <- "cms_blog/provision/#{target}.steps" |> File.read!() |> String.split() do
         assert {_, 0} = System.cmd("sh", ["-n", "cms_blog/provision/#{step}.sh"])
       end
