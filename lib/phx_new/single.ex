@@ -171,6 +171,11 @@ defmodule Phx.New.Single do
      "cms/spex_case.ex.eex": "test/support/spex_case.ex"}
   ])
 
+  # Journey tests (PhoenixTest, Playwright for a recorded demo); needs HTML.
+  template(:cms_journey, [
+    {:eex, :project, "cms/journey_test_stage.ex.eex": "test/support/journey_test_stage.ex"}
+  ])
+
   # Deploy boilerplate. Always emitted, no flag: the setup routine fills in
   # values and runs commands rather than generating files, so it can assume
   # these exist. A library carries a few files it will never use; that is the
@@ -276,6 +281,7 @@ defmodule Phx.New.Single do
   """
   def gen_cms(%Project{} = project) do
     copy_from(project, __MODULE__, :cms)
+    if project.binding[:html], do: copy_from(project, __MODULE__, :cms_journey)
 
     app = project.binding[:app_name]
 

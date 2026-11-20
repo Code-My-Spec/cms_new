@@ -39,6 +39,14 @@ certify dir:
     env MIX_ENV=test mix client_utils.sarif "{{dir}}/exunit.sarif" -- mix test
     env MIX_ENV=test mix client_utils.sarif "{{dir}}/spex.sarif" -- mix spex
 
+# The CodeMySpec loop calls this before the owner decides on a journey: the suite
+# runs with video on, so every test that drives a browser (a Playwright journey)
+# leaves its recording in the directory. Needs Playwright's browsers
+# (`npx playwright install` in assets/). Narrow it to the journey's tests here.
+demo dir:
+    mix deps.get
+    env MIX_ENV=test CMS_JOURNEY_VIDEO_DIR="{{dir}}" mix client_utils.sarif "{{dir}}/demo.sarif" -- mix test
+
 # Make a working copy of this project, adjacent to this checkout.
 #
 # The CodeMySpec harness calls this instead of running `git worktree add`

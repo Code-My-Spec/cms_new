@@ -185,6 +185,14 @@ defmodule Mix.Tasks.Cms.NewTest do
       assert File.read!("cms_blog/provision/env.sh") =~ "APP=cms_blog"
       assert File.read!("cms_blog/justfile") =~ "provision step dir:"
 
+      # Journey tests: the deps, a port of its own per run, the stage helper, and the demo recipe.
+      assert File.read!("cms_blog/mix.exs") =~ "{:phoenix_test_playwright,"
+      assert File.read!("cms_blog/config/test.exs") =~ "PHX_TEST_PORT"
+      assert File.read!("cms_blog/config/test.exs") =~ "endpoint: CmsBlogWeb.Endpoint"
+      assert File.read!("cms_blog/test/test_helper.exs") =~ "CmsBlogWeb.Endpoint.url()"
+      assert File.read!("cms_blog/test/support/journey_test_stage.ex") =~ "def stage("
+      assert File.read!("cms_blog/justfile") =~ "demo dir:"
+
       # The builder makes the image on the burst box at deploy; no CI build.
       refute File.exists?("cms_blog/.github/workflows/build.yml")
 

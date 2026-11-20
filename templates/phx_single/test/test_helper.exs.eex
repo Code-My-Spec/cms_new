@@ -1,2 +1,12 @@
 ExUnit.start()<%= if @ecto do %>
-<%= @adapter_config[:test_setup_all] %><% end %>
+<%= @adapter_config[:test_setup_all] %><% end %><%= if @html do %>
+
+# Playwright is only there where its browsers are installed; a LiveView journey needs none.
+try do
+  _ = PhoenixTest.Playwright.Supervisor.start_link()
+  :ok
+rescue
+  _ -> :ok
+end
+
+Application.put_env(:phoenix_test, :base_url, <%= @endpoint_module %>.url())<% end %>

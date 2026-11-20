@@ -3,7 +3,8 @@ import Config
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :<%= @app_name %>, <%= @endpoint_module %>,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
+  # Each run of the suite is handed a port of its own, so two do not collide.
+  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PHX_TEST_PORT") || "4002")],
   secret_key_base: "<%= @secret_key_base_test %>",
   server: false<%= if @mailer do %>
 
@@ -22,7 +23,16 @@ config :phoenix, :plug_init_mode, :runtime<%= if @html do %>
 
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
-  enable_expensive_runtime_checks: true<% end %>
+  enable_expensive_runtime_checks: true
+
+# Journey tests. `just demo` sets CMS_JOURNEY_VIDEO_DIR; with it, Playwright records video.
+config :phoenix_test, otp_app: :<%= @app_name %>, endpoint: <%= @endpoint_module %>
+
+config :phoenix_test,
+  playwright: [
+    browser_context_opts:
+      if(dir = System.get_env("CMS_JOURNEY_VIDEO_DIR"), do: [record_video: %{dir: dir}], else: [])
+  ]<% end %>
 
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
