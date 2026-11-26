@@ -141,6 +141,20 @@ defmodule Phx.New.Single do
      "phx_static/favicon.ico": "priv/static/favicon.ico"}
   ])
 
+  # CodeMySpec: LiveViews that run in the browser, with Ecto on PGlite. See
+  # gen_local/1.
+  template(:local, [
+    {:eex, :project,
+     "phx_local/mix.exs.eex": "local/mix.exs",
+     "phx_local/formatter.exs.eex": "local/.formatter.exs",
+     "phx_local/config/config.exs.eex": "local/config/config.exs",
+     "phx_local/lib/local/application.ex.eex": "local/lib/local/application.ex",
+     "phx_local/lib/local/repo.ex.eex": "local/lib/local/repo.ex",
+     "phx_local/lib/local/migrations.ex.eex": "local/lib/local/migrations.ex",
+     "phx_local/lib/local/seeds.ex.eex": "local/lib/local/seeds.ex",
+     "phx_local/lib/hello_local.ex.eex": "local/lib/hello_local.ex"}
+  ])
+
   template(:mailer, [
     {:eex, :app, "phx_mailer/lib/app_name/mailer.ex.eex": "lib/:app/mailer.ex"}
   ])
@@ -264,6 +278,7 @@ defmodule Phx.New.Single do
     if Project.gettext?(project), do: gen_gettext(project)
 
     gen_assets(project)
+    if project.binding[:local], do: gen_local(project)
     gen_cms(project)
     gen_deploy(project)
     project
@@ -351,6 +366,20 @@ defmodule Phx.New.Single do
     end
 
     project
+  end
+
+  @doc """
+  Emits `local/`: a Mix project of LiveViews that run in the browser
+  (LocalLiveView on Popcorn), whose repo is this tab's own Postgres (PGlite,
+  via llv_pglite) running the host's `priv/repo/migrations`. The host side
+  (endpoint headers and socket, router import, esbuild ESM, app.js engine,
+  dev watcher) is in the regular templates, behind `@local`.
+
+  This is what the CodeMySpec preview server serves: the cooked bundle and a
+  static page, no Phoenix server.
+  """
+  def gen_local(%Project{} = project) do
+    copy_from(project, __MODULE__, :local)
   end
 
   def gen_html(project) do

@@ -1,0 +1,55 @@
+import Config
+
+# How `mix llv.build` packages this project, see `mix help popcorn.cook`
+config :popcorn,
+  # Web assets, which the host app serves (PGlite alone is 16MB), and
+  # generators' templates
+  exclude_priv: ["static", phoenix: "templates", local_live_view: "*", llv_pglite: "*"]
+
+if config_env() == :prod do
+  # Smaller, but too slow for the watcher to rebuild with on every change
+  config :popcorn, brotli_effort: :max
+end
+
+# The host's migrations run in the browser (Local.Migrations). Each file's
+# module is kept by name, read from the file, so adding a migration needs no
+# edit here.
+migration_modules =
+  Path.expand("../../priv/repo/migrations/*.exs", __DIR__)
+  |> Path.wildcard()
+  |> Enum.flat_map(fn file ->
+    {_ast, mods} =
+      file
+      |> File.read!()
+      |> Code.string_to_quoted!()
+      |> Macro.prewalk([], fn
+        {:defmodule, _, [{:__aliases__, _, parts} | _]} = node, acc ->
+          {node, [Module.concat(parts) | acc]}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    mods
+  end)
+
+# Tree-shaking, plus what Ecto reaches only dynamically (child specs, adapters,
+# migrations). Prod only: it's whole-program (any edit re-shakes stdlib and
+# deps, ~13s), and without it the stdlib and deps bundles stay byte-identical
+# between rebuilds, so the browser keeps them cached.
+config :popcorn,
+  treeshake:
+    config_env() == :prod and
+      [
+        keep:
+          [
+            mod: Ecto.Repo.Supervisor,
+            mod: Agent,
+            behaviour_impls: Ecto.Adapter,
+            mod: Ecto.Adapters.Postgres.Connection,
+            mod: Postgrex.Error,
+            mod: Ecto.Migrator,
+            mod: Ecto.Migration.Runner,
+            mod: Ecto.Migration.SchemaMigration
+          ] ++ Enum.map(migration_modules, &{:mod, &1})
+      ]

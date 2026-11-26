@@ -1,0 +1,40 @@
+defmodule Local.MixProject do
+  use Mix.Project
+
+  # LiveViews that run in the browser: `mix llv.build` (or the dev watcher)
+  # compiles this project for Wasm and packages it with the Popcorn runtime
+  # into the host's priv/static/assets/js/popcorn. Shares the host's deps and
+  # lockfile.
+  def project do
+    [
+      app: :local,
+      version: "0.1.0",
+      elixir: "~> 1.20",
+      start_permanent: Mix.env() == :prod,
+      deps_path: "../deps",
+      lockfile: "../mix.lock",
+      deps: deps(),
+      compilers: Mix.compilers()
+    ]
+  end
+
+  def cli do
+    [default_target: :wasm]
+  end
+
+  def application do
+    [extra_applications: [:logger]] ++ app_mod(Mix.target())
+  end
+
+  # The host compiles this project too, to render the views' first HTML; the
+  # repo only exists in the browser.
+  defp app_mod(:host), do: []
+  defp app_mod(_), do: [mod: {Local.Application, []}]
+
+  defp deps do
+    [
+      # LocalLiveView, Popcorn and Ecto on PGlite. Same source as the host's.
+      <%= @llv_pglite_dep %>
+    ]
+  end
+end

@@ -1,0 +1,37 @@
+defmodule HelloLocal do
+  @moduledoc """
+  A LiveView that runs in the browser, with its own Postgres. Routed in the
+  host's router with `live_local "/local/hello", HelloLocal`.
+  """
+  use LocalLiveView
+
+  @impl true
+  def mount(_params, _session, socket) do
+    # mount/3 also runs on the server for the first HTML, where there is no
+    # database: boot it once connected in the browser.
+    if connected?(socket), do: send(self(), :boot)
+    {:ok, assign(socket, db: nil)}
+  end
+
+  @impl true
+  def handle_info(:boot, socket) do
+    %{ran: ran} = Local.Repo.migrate!()
+    %{"version" => version} = LlvPglite.PGlite.info()
+    {:noreply, assign(socket, db: %{version: version, ran: length(ran)})}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div id="hello-local" class="mx-auto max-w-xl px-4 py-12">
+      <h1 class="text-lg font-semibold">Hello from Wasm</h1>
+      <p :if={!@db} id="hello-local-booting" class="mt-2 text-sm opacity-70">
+        Starting Postgres in this tab…
+      </p>
+      <p :if={@db} id="hello-local-db" class="mt-2 text-sm opacity-70">
+        Postgres {@db.version} in this tab · {@db.ran} migration(s) ran
+      </p>
+    </div>
+    """
+  end
+end

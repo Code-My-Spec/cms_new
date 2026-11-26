@@ -43,7 +43,7 @@ config :esbuild,
   version: "0.25.4",
   <%= @app_name %>: [
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.js --bundle<%= if @local do %> --format=esm<% end %> --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/*<%= if @local do %> --alias:local_live_view=<%= @llv_js_path %> --alias:llv_pglite=<%= @llv_pglite_js_path %><% end %> --alias:@=.),
     cd: Path.expand("..<%= if @in_umbrella, do: "/apps/#{@app_name}" %>/assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]<% end %><%= if @css do %>

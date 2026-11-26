@@ -1,0 +1,10 @@
+defmodule Local.Seeds do
+  @moduledoc """
+  Starting data for an empty in-browser database: the first visit, or after
+  an edited migration forced a wipe. Plain Ecto against the given repo.
+  """
+
+  def run(_repo) do
+    :ok
+  end
+end

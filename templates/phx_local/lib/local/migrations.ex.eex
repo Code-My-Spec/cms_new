@@ -1,0 +1,4 @@
+defmodule Local.Migrations do
+  @moduledoc "The host's migrations, compiled into the browser bundle. See `LlvPglite.Migrations`."
+  use LlvPglite.Migrations, path: "../../../priv/repo/migrations"
+end

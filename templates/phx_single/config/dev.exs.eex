@@ -24,7 +24,12 @@ config :<%= @app_name %>, <%= @endpoint_module %>,<%= if @inside_docker_env? do 
   secret_key_base: "<%= @secret_key_base_dev %>",
   watchers: <%= if @javascript or @css do %>[<%= if @javascript do %>
     esbuild: {Esbuild, :install_and_run, [:<%= @app_name %>, ~w(--sourcemap=inline --watch)]}<%= if @css, do: "," %><% end %><%= if @css do %>
-    tailwind: {Tailwind, :install_and_run, [:<%= @app_name %>, ~w(--watch)]}<% end %>
+    tailwind: {Tailwind, :install_and_run, [:<%= @app_name %>, ~w(--watch)]}<% end %><%= if @local do %>,
+    # Re-cooks the browser bundle on a change in local/ or a migration (the
+    # browser runs the migrations too).
+    local_live_view:
+      {LocalLiveView.Watcher, :run,
+       [[dirs: [Path.absname("local/lib"), Path.absname("priv/repo/migrations")]]]}<% end %>
   ]<% else %>[]<% end %>
 
 # ## SSL Support

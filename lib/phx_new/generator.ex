@@ -235,6 +235,21 @@ defmodule Phx.New.Generator do
     File.exists?(mix_path) && File.exists?(apps_path)
   end
 
+  # Where the generated app gets llv_pglite, and where its JS lives relative to
+  # assets/ (esbuild's cwd). `CMS_LLV_PGLITE_PATH` points at a local checkout,
+  # for working on the package; it must not contain spaces (the esbuild args
+  # are a ~w list).
+  defp llv_pglite_source do
+    case System.get_env("CMS_LLV_PGLITE_PATH") do
+      nil ->
+        {~s({:llv_pglite, github: "Code-My-Spec/llv_pglite"}), "../deps/llv_pglite"}
+
+      path ->
+        path = Path.expand(path)
+        {"{:llv_pglite, path: #{inspect(path)}}", path}
+    end
+  end
+
   def put_binding(%Project{opts: opts} = project) do
     db = Keyword.get(opts, :database, "postgres")
     web_adapter = Keyword.get(opts, :adapter, "bandit")
@@ -252,6 +267,15 @@ defmodule Phx.New.Generator do
     phoenix_path = phoenix_path(project, dev, false)
     phoenix_path_umbrella_root = phoenix_path(project, dev, true)
     agents_md = Keyword.get(opts, :agents_md, true)
+
+    # CodeMySpec: LiveViews that run in the browser (LocalLiveView on Popcorn)
+    # with Ecto on PGlite, which is what the preview server serves. It needs
+    # LiveView for the engine, esbuild for the ES module bundle, and Postgres:
+    # the browser runs the app's own Postgres migrations.
+    local =
+      Keyword.get(opts, :local, true) and live and esbuild and ecto and db == "postgres"
+
+    {llv_pglite_dep, llv_pglite_js_root} = llv_pglite_source()
 
     # detect if we're inside a docker env, but if we're in github actions,
     # we want to treat it like regular env for end-user testing purposes
@@ -313,6 +337,10 @@ defmodule Phx.New.Generator do
       ecto: ecto,
       html: html,
       live: live,
+      local: local,
+      llv_pglite_dep: llv_pglite_dep,
+      llv_js_path: "#{llv_pglite_js_root}/vendor/local_live_view/priv/static/local_live_view.js",
+      llv_pglite_js_path: "#{llv_pglite_js_root}/priv/static/llv_pglite.js",
       live_comment: if(live, do: nil, else: "// "),
       dashboard: dashboard,
       gettext: gettext,
@@ -331,7 +359,7 @@ defmodule Phx.New.Generator do
       elixir_install_bin_path: from_elixir_install && elixir_install_bin_path(),
       inside_docker_env?: inside_docker_env?,
       agents_md: agents_md,
-      config_regex_E: Version.match?(System.version(), "~> 1.19.3 or ~> 1.20") && "E" || ""
+      config_regex_E: (Version.match?(System.version(), "~> 1.19.3 or ~> 1.20") && "E") || ""
     ]
 
     %{project | binding: binding}

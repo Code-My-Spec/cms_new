@@ -1,5 +1,15 @@
 defmodule <%= @endpoint_module %> do
-  use Phoenix.Endpoint, otp_app: :<%= @web_app_name %>
+  use Phoenix.Endpoint, otp_app: :<%= @web_app_name %><%= if @local do %>
+
+  # Cross-origin isolation, which the Popcorn runtime needs. It also means
+  # every cross-origin resource a page loads must opt in (CORP or CORS).
+  plug :put_wasm_security_headers
+
+  defp put_wasm_security_headers(conn, _opts) do
+    conn
+    |> put_resp_header("cross-origin-opener-policy", "same-origin")
+    |> put_resp_header("cross-origin-embedder-policy", "require-corp")
+  end<% end %>
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
@@ -11,11 +21,17 @@ defmodule <%= @endpoint_module %> do
     same_site: "Lax"
   ]
 
-  <%= if !(@dashboard || @live) do %><%= "# " %><% end %>socket "/live", Phoenix.LiveView.Socket,
+<%= if @local do %>  socket "/llv_socket", LocalLiveView.Socket,
+    websocket: [connect_info: [session: @session_options]]
+
+<% end %>  <%= if !(@dashboard || @live) do %><%= "# " %><% end %>socket "/live", Phoenix.LiveView.Socket,
   <%= if !(@dashboard || @live) do %><%= "# " %><% end %>  websocket: [connect_info: [session: @session_options]],
   <%= if !(@dashboard || @live) do %><%= "# " %><% end %>  longpoll: [connect_info: [session: @session_options]]
 
-  # Serve at "/" the static files from "priv/static" directory.
+<%= if @local do %>  # PGlite (Postgres in Wasm) and its worker, for the browser-side repo.
+  plug Plug.Static, at: "/pglite", from: {:llv_pglite, "priv/static/pglite"}
+
+<% end %>  # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),
   # the `gzip` option is enabled to serve compressed

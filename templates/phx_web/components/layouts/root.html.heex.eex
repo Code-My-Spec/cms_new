@@ -89,7 +89,7 @@
         send("ready", { url: window.location.href });
       })();
     </script>
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    <script defer phx-track-static type=<%= if @local, do: ~s("module"), else: ~s("text/javascript") %> src={~p"/assets/js/app.js"}>
     </script><%= if @css do %>
     <script>
       (() => {

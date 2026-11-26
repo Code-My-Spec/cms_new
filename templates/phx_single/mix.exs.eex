@@ -59,7 +59,11 @@ defmodule <%= @app_module %>.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      <%= @phoenix_dep %>,<%= if @ecto do %>
+      <%= @phoenix_dep %>,<%= if @local do %>
+      # The local/ project: LiveViews that run in the browser (Popcorn), with
+      # Ecto on PGlite. See local/mix.exs.
+      {:local, path: "local"},
+      <%= @llv_pglite_dep %>,<% end %><%= if @ecto do %>
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {<%= inspect @adapter_app %>, ">= 0.0.0"},<% end %><%= if @html do %>
@@ -152,7 +156,7 @@ defmodule <%= @app_module %>.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get"<%= if @ecto do %>, "ecto.setup"<% end %><%= if @asset_builders != [] do %>, "assets.setup", "assets.build"<% end %>]<%= if @ecto do %>,
+      setup: ["deps.get"<%= if @local do %>, "llv.build"<% end %><%= if @ecto do %>, "ecto.setup"<% end %><%= if @asset_builders != [] do %>, "assets.setup", "assets.build"<% end %>]<%= if @ecto do %>,
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],

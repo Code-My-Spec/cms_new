@@ -39,7 +39,8 @@ defmodule Mix.Tasks.Phx.NewTest do
 
       assert_file("phx_blog/.formatter.exs", fn file ->
         assert file =~ "import_deps: [:ecto, :ecto_sql, :phoenix]"
-        assert file =~ "subdirectories: [\"priv/*/migrations\"]"
+        # CodeMySpec: "local" too, the in-browser project (on by default)
+        assert file =~ "subdirectories: [\"priv/*/migrations\", \"local\"]"
         assert file =~ "plugins: [Phoenix.LiveView.HTMLFormatter]"
 
         assert file =~

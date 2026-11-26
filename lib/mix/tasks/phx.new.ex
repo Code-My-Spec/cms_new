@@ -42,6 +42,10 @@ defmodule Mix.Tasks.Phx.New do
 
     * `--no-dashboard` - do not include Phoenix.LiveDashboard
 
+    * `--no-local` - do not generate the `local/` project (LiveViews that
+      run in the browser, with Ecto on PGlite). Automatically disabled
+      without LiveView, esbuild or Postgres
+
     * `--no-ecto` - do not generate Ecto files
 
     * `--no-esbuild` - do not include esbuild dependencies and assets.
@@ -170,6 +174,7 @@ defmodule Mix.Tasks.Phx.New do
     verbose: :boolean,
     live: :boolean,
     dashboard: :boolean,
+    local: :boolean,
     install: :boolean,
     prefix: :string,
     mailer: :boolean,

@@ -1,5 +1,6 @@
 defmodule <%= @web_namespace %>.Router do
-  use <%= @web_namespace %>, :router<%= if @html do %>
+  use <%= @web_namespace %>, :router<%= if @local do %>
+  import LocalLiveView.Router<% end %><%= if @html do %>
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -79,7 +80,10 @@ defmodule <%= @web_namespace %>.Router do
   scope "/", <%= @web_namespace %> do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/", PageController, :home<%= if @local do %>
+
+    # Runs entirely in the browser: local/lib/hello_local.ex
+    live_local "/local/hello", HelloLocal<% end %>
   end
 
   # Other scopes may use custom stacks.

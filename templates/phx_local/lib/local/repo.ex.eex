@@ -1,0 +1,8 @@
+defmodule Local.Repo do
+  @moduledoc """
+  Ecto in the browser: this tab's own Postgres (PGlite), persisted to
+  IndexedDB. `migrate!/0` brings it up to the host's `priv/repo/migrations`;
+  see `LlvPglite.Repo`.
+  """
+  use LlvPglite.Repo, otp_app: :local, migrations: Local.Migrations, seeds: Local.Seeds
+end
