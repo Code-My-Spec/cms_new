@@ -16,7 +16,7 @@ defmodule <%= @app_module %>.Release do
   at a time, so a migration never races the application's own supervision tree.
   """
 
-  @app :<%= @app_name %>
+<%= if @ecto do %>  @app :<%= @app_name %>
 
   @doc """
   Run every pending migration for every repo, reporting a first deploy.
@@ -67,4 +67,9 @@ defmodule <%= @app_module %>.Release do
   defp load_app do
     Application.load(@app)
   end
-end
+<% else %>  @doc """
+  Nothing to migrate: the app has no database. `bin/migrate` still calls
+  this on every deploy, so it has to exist.
+  """
+  def migrate, do: :ok
+<% end %>end

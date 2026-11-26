@@ -3,14 +3,14 @@ defmodule <%= @spex_namespace %>.Case do
   Base case for spex (BDD spec) tests.
 
   Wires up Phoenix.ConnTest for HTTP assertions, Phoenix.LiveViewTest
-  for driving LiveViews, the SexySpex DSL (spex/scenario/given_/when_/then_),
-  and the DB sandbox.
+  for driving LiveViews, the SexySpex DSL (spex/scenario/given_/when_/then_)<%= if @ecto do %>,
+  and the DB sandbox<% end %>.
   """
   use ExUnit.CaseTemplate
 
-  alias Ecto.Adapters.SQL.Sandbox
+<%= if @ecto do %>  alias Ecto.Adapters.SQL.Sandbox
 
-  using do
+<% end %>  using do
     quote do
       @endpoint <%= @endpoint_module %>
 
@@ -24,7 +24,7 @@ defmodule <%= @spex_namespace %>.Case do
     end
   end
 
-  # Owns the sandbox directly rather than borrowing
+<%= if @ecto do %>  # Owns the sandbox directly rather than borrowing
   # `<%= @test_namespace %>.DataCase.setup_sandbox/1`: spex are a separate
   # boundary from test support, and reaching into DataCase would force
   # <%= @spex_namespace %> to depend on <%= @test_namespace %> for one
@@ -34,4 +34,7 @@ defmodule <%= @spex_namespace %>.Case do
     on_exit(fn -> Sandbox.stop_owner(pid) end)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
-end
+<% else %>  setup do
+    {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+<% end %>end

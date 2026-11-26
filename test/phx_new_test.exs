@@ -676,6 +676,17 @@ defmodule Mix.Tasks.Phx.NewTest do
         assert file =~ "inputs: [\"*.{heex,ex,exs}\", \"{config,lib,test}/**/*.{heex,ex,exs}\"]"
         refute file =~ "subdirectories:"
       end)
+
+      # bin/migrate calls Release.migrate/0 on every deploy, database or not.
+      assert_file("phx_blog/lib/phx_blog/release.ex", fn file ->
+        assert file =~ "def migrate, do: :ok"
+        refute file =~ "Ecto"
+      end)
+
+      assert_file("phx_blog/test/support/phx_blog_spex_case.ex", fn file ->
+        assert file =~ "build_conn()"
+        refute file =~ "Sandbox"
+      end)
     end)
   end
 
