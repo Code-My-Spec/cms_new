@@ -132,11 +132,11 @@ defmodule Mix.Tasks.Cms.NewTest do
       end)
 
       # --- CredoChecks ------------------------------------------------------
-      # validate_credo_exs/1 wants both requires plus the eval_file
+      # The framework checks come from client_utils; only local ones are required.
       assert_file("cms_blog/.credo.exs", fn file ->
-        assert file =~ "credo_checks/framework"
-        assert file =~ "credo_checks/local"
-        assert file =~ "credo_checks/framework/checks.exs"
+        assert file =~ "ClientUtils.Check.NoControlFlowInTests"
+        assert file =~ "credo_checks/local/checks.exs"
+        refute file =~ "credo_checks/framework"
       end)
 
       # --- ProjectStructure -------------------------------------------------
